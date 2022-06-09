@@ -128,13 +128,13 @@ def find_crs(dataa, group_dq, read_noise, normal_rej_thresh,
         ratio = np.abs(first_diffs - median_diffs[np.newaxis, :, :]) / sigma[np.newaxis, :, :]
         masked_ratio = np.ma.masked_greater(ratio, normal_rej_thresh)
         # repeat the determination of the median after the removal of the first pass has flagged jumps
-        masked_diffs = np.ma.masked_where(np.ma.getmask(masked_ratio), first_diffs)
-        masked_median_diffs = np.ma.median(masked_diffs, axis=0)
-        masked_sigma = np.sqrt(np.abs(masked_median_diffs) + read_noise_2 / nframes)
-        masked_ratio2 = np.abs(masked_diffs - masked_median_diffs[np.newaxis, :, :])/ \
-            sigma[np.newaxis, :, :]
-        final_masked_ratio = np.ma.masked_greater(masked_ratio2, normal_rej_thresh)
-        jump_mask = final_masked_ratio.mask
+        #masked_diffs = np.ma.masked_where(np.ma.getmask(masked_ratio), first_diffs)
+        #masked_median_diffs = np.ma.median(masked_diffs, axis=0)
+        #masked_sigma = np.sqrt(np.abs(masked_median_diffs) + read_noise_2 / nframes)
+        #masked_ratio2 = np.abs(masked_diffs - masked_median_diffs[np.newaxis, :, :])/ \
+        #    sigma[np.newaxis, :, :]
+        #final_masked_ratio = np.ma.masked_greater(masked_ratio2, normal_rej_thresh)
+        jump_mask = masked_ratio.mask
 
         jump_mask[np.bitwise_and(jump_mask, gdq[integ, 1:, :, :] == sat_flag)] = False
         jump_mask[np.bitwise_and(jump_mask, gdq[integ, 1:, :, :] == dnu_flag)] = False
