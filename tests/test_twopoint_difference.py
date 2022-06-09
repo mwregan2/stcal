@@ -10,10 +10,8 @@ DQFLAGS = {'JUMP_DET': 4, 'SATURATED': 2, 'DO_NOT_USE': 1}
 @pytest.fixture(scope='function')
 def setup_cube():
 
-    def _cube(ngroups, readnoise=10):
+    def _cube(ngroups, readnoise=10, nrows=204, ncols=204):
         nints = 1
-        nrows = 204
-        ncols = 204
         rej_threshold = 3
         nframes = 1
         data = np.zeros(shape=(nints, ngroups, nrows, ncols), dtype=np.float32)
@@ -33,6 +31,18 @@ def test_nocrs_noflux(setup_cube):
                                                      False, 200, 10, DQFLAGS)
 
     assert(0 == np.max(out_gdq))  # no CR found
+
+def test_flag_neighbors_simple(setup_cube):
+    ngroups = 5
+    data, gdq, nframes, read_noise, rej_threshold = setup_cube(ngroups, nrows=3, ncols=3)
+
+    data[0, 0:2, 1, 1] = 10.0
+    data[0, 2:5, 1, 1] = 1000
+    out_gdq, row_below_gdq, row_above_gdq = find_crs(data, gdq, read_noise, rej_threshold,
+                                                     rej_threshold-1, rej_threshold+1, nframes,
+                                                     True, 200, 10, DQFLAGS)
+    assert(4 == np.max(out_gdq))  # a CR was found
+    assert(2 == np.argmax(out_gdq[0, :, 1, 1]))  # find the CR in the expected group
 
 
 def test_5grps_cr3_noflux(setup_cube):
