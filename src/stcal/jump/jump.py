@@ -224,7 +224,7 @@ def detect_jumps(frames_per_group, data, gdq, pdq, err,
     jump_flag = 4
     min_sat_area = 1
     min_jump_area = 15
-    max_offset = 3
+    max_offset = 5
     expand_factor = 1.5
     for integration in range(data.shape[0]):
         for group in range(data.shape[1]):
