@@ -1,6 +1,7 @@
 import time
 import logging
 import numpy as np
+import cv2 as cv
 
 from . import twopoint_difference as twopt
 from . import constants
@@ -219,9 +220,61 @@ def detect_jumps(frames_per_group, data, gdq, pdq, err,
             previous_row_above_gdq = row_above_gdq.copy()
             k += 1
         elapsed = time.time() - start
+    sat_flag = 2
+    jump_flag = 4
+    min_sat_area = 1
+    min_jump_area = 15
+    max_offset = 3
+    expand_factor = 1.5
+    for integration in range(data.shape[0]):
+        for group in range(data.shape[1]):
+            sat_circles = find_circles(gdq[integration, group, :, :], sat_flag, min_sat_area)
+            jump_circles = find_circles(gdq[integration, group, :, :], jump_flag, min_jump_area)
+            snowballs = make_snowballs(jump_circles, sat_circles, max_offset=max_offset)
+            gdq[integration, group, :, :] = extend_snowballs(gdq[integration, group, :, :],
+                                                             snowballs, expansion=expand_factor)
 
     elapsed = time.time() - start
     log.info('Total elapsed time = %g sec' % elapsed)
 
     # Return the updated data quality arrays
     return gdq, pdq
+
+
+def extend_snowballs(plane, snowballs, expansion=1.5):
+    print("snowballs ", snowballs)
+    outplane = plane.copy()
+    for snowball in snowballs:
+        jump_radius = snowball[0][1]
+        jump_center = snowball[0][0]
+        xcen = jump_center[0]
+        ycen = jump_center[1]
+        extend_radius = jump_radius * expansion
+#        print("Extend radius", extend_radius)
+        xmin = int(xcen - extend_radius)
+        xmax = int(xcen + extend_radius)
+        ymin = int(ycen - extend_radius)
+        ymax = int(ycen + extend_radius)
+        for x in range(xmin, xmax):
+            for y in range(ymin, ymax):
+                if np.sqrt((y - ycen) ** 2 + (x - xcen) ** 2) < extend_radius:
+                    if not np.bitwise_and(plane[y, x], 2):
+                        #                       print("adding flag", y, x)
+                        outplane[y, x] = np.bitwise_or(plane[y, x], 4)
+    return outplane
+
+def find_circles(dqplane, bitmask, min_area):
+    pixels = np.bitwise_and(dqplane, bitmask)
+    contours, hierarchy = cv.findContours(pixels, cv.RETR_EXTERNAL, 2)
+    bigcontours = [con for con in contours if cv.contourArea(con) > min_area]
+    circles = [cv.minEnclosingCircle(con) for con in bigcontours]
+    return circles
+
+def make_snowballs(jump_circles, sat_circles, max_offset):
+    snowballs = []
+    for jump in jump_circles:
+        for sat in sat_circles:
+            distance = np.sqrt((jump[0][0] - sat[0][0]) ** 2 + (jump[0][1] - sat[0][1]) ** 2)
+            if distance < max_offset:
+                snowballs.append((jump, sat))
+    return snowballs
