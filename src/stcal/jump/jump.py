@@ -242,7 +242,7 @@ def detect_jumps(frames_per_group, data, gdq, pdq, err,
 
 
 def extend_snowballs(plane, snowballs, expansion=1.5):
-    print("snowballs ", snowballs)
+#    print("snowballs ", snowballs)
     outplane = plane.copy()
     for snowball in snowballs:
         jump_radius = snowball[0][1]
@@ -255,13 +255,14 @@ def extend_snowballs(plane, snowballs, expansion=1.5):
         xmax = int(xcen + extend_radius)
         ymin = int(ycen - extend_radius)
         ymax = int(ycen + extend_radius)
-        for x in range(xmin, xmax):
-            for y in range(ymin, ymax):
+        for x in range(max(0, xmin), min(plane.shape[1], xmax)):
+            for y in range(max(0, ymin), min(plane.shape[1], ymax)):
                 if np.sqrt((y - ycen) ** 2 + (x - xcen) ** 2) < extend_radius:
                     if not np.bitwise_and(plane[y, x], 2):
                         #                       print("adding flag", y, x)
                         outplane[y, x] = np.bitwise_or(plane[y, x], 4)
     return outplane
+
 
 def find_circles(dqplane, bitmask, min_area):
     pixels = np.bitwise_and(dqplane, bitmask)
@@ -269,6 +270,7 @@ def find_circles(dqplane, bitmask, min_area):
     bigcontours = [con for con in contours if cv.contourArea(con) > min_area]
     circles = [cv.minEnclosingCircle(con) for con in bigcontours]
     return circles
+
 
 def make_snowballs(jump_circles, sat_circles, max_offset):
     snowballs = []
