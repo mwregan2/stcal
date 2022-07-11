@@ -224,13 +224,14 @@ def detect_jumps(frames_per_group, data, gdq, pdq, err,
     jump_flag = 4
     min_sat_area = 1
     min_jump_area = 6
+    min_jump_radius = 4
     max_offset = 4
-    expand_factor = 1.7
+    expand_factor = 1.9
     for integration in range(data.shape[0]):
         for group in range(data.shape[1]):
             sat_circles = find_circles(gdq[integration, group, :, :], sat_flag, min_sat_area)
             jump_circles = find_circles(gdq[integration, group, :, :], jump_flag, min_jump_area)
-            snowballs = make_snowballs(jump_circles, sat_circles, max_offset=max_offset)
+            snowballs = make_snowballs(jump_circles, sat_circles, max_offset, min_jump_radius)
             gdq[integration, group, :, :] = extend_snowballs(gdq[integration, group, :, :],
                                                              snowballs, expansion=expand_factor)
 
@@ -245,8 +246,8 @@ def extend_snowballs(plane, snowballs, expansion=1.5):
 #    print("snowballs ", snowballs)
     outplane = plane.copy()
     for snowball in snowballs:
-        jump_radius = snowball[0][1]
-        jump_center = snowball[0][0]
+        jump_radius = snowball[1]
+        jump_center = snowball[0]
         xcen = jump_center[0]
         ycen = jump_center[1]
         extend_radius = jump_radius * expansion
@@ -272,11 +273,12 @@ def find_circles(dqplane, bitmask, min_area):
     return circles
 
 
-def make_snowballs(jump_circles, sat_circles, max_offset):
+def make_snowballs(jump_circles, sat_circles, max_offset, min_jump_radius):
     snowballs = []
     for jump in jump_circles:
         for sat in sat_circles:
             distance = np.sqrt((jump[0][0] - sat[0][0]) ** 2 + (jump[0][1] - sat[0][1]) ** 2)
-            if distance < max_offset:
-                snowballs.append((jump, sat))
+            if distance < max_offset or jump[1] > min_jump_radius:
+                if jump not in snowballs:
+                    snowballs.append(jump)
     return snowballs
