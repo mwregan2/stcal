@@ -1,4 +1,16 @@
-1.2.1 (unreleased)
+1.2.2 (unreleased)
+==================
+
+Bug Fixes
+---------
+
+jump
+~~~~
+- Changes to limit the expansion of MIRI shower ellipses to be the same
+  number of pixels for both the major and minor axis. JP-2944 [#123]
+
+
+1.2.1 (2022-10-14)
 ==================
 
 Bug Fixes
