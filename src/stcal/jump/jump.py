@@ -489,6 +489,7 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
         minor_axis = min(ellipse[1][1], ellipse[1][0])
+        print('minor axis ', minor_axis, 'center', ceny, cenx)
         if minor_axis > min_sat_radius_extend:
             axis1 = ellipse[1][0] + expansion
             axis2 = ellipse[1][1] + expansion
