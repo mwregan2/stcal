@@ -499,8 +499,8 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
             print("axis 1", axis1, "axis2", axis2)
 
             image = cv.ellipse(image, (round(ceny), round(cenx)),
-                               (round(axis1/2),
-                               round(axis2/2)), alpha, 0, 360, (0, 0, 22), -1)
+                               (round((axis1 + 0.5)/2),
+                               round((axis2 + 0.5)/2)), alpha, 0, 360, (0, 0, 22), -1)
             sat_ellipse = image[:, :, 2]
             saty, satx = np.where(sat_ellipse == 22)
             outcube[grp:, saty, satx] = sat_flag
