@@ -497,6 +497,7 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
             axis1 = min(axis1, max_extended_radius)
             axis2 = min(axis2, max_extended_radius)
             print("axis 1", axis1, "axis2", axis2)
+
             image = cv.ellipse(image, (round(ceny), round(cenx)),
                                (round(axis1/2),
                                round(axis2/2)), alpha, 0, 360, (0, 0, 22), -1)

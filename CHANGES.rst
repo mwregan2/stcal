@@ -1,4 +1,26 @@
-1.3.5 (unreleased)
+1.4.0 (unreleased)
+==================
+
+Bug Fixes
+---------
+
+jump
+~~~~
+
+- Updated the code for both NIR Snowballs and MIRI Showers. The snowball
+  flagging will now extend the saturated core of snowballs. Also,
+  circles are no longer used for snowballs preventing the huge circles
+  of flagged pixels from a glancing CR.
+  Shower code is completely new and is now able to find extended
+  emission far below the single pixel SNR. It also allows detected
+  showers to flag groups after the detection. [#144]
+
+Changes to API
+--------------
+
+- 
+
+1.3.5 (2023-03-30)
 ==================
 
 Bug Fixes
