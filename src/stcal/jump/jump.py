@@ -34,7 +34,7 @@ def detect_jumps(frames_per_group, data, gdq, pdq, err,
                  edge_size=25, extend_snr_threshold=1.2, extend_min_area=90,
                  extend_inner_radius=1, extend_outer_radius=2.6,
                  extend_ellipse_expand_ratio=1.2, grps_masked_after_shower=5,
-                 max_extended_radius=200):
+                 max_extended_radius=300):
 
     """
     This is the high-level controlling routine for the jump detection process.
@@ -490,7 +490,7 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
         cenx = ellipse[0][1]
         minor_axis = min(ellipse[1][1], ellipse[1][0])
         major_axis = max(ellipse[1][1], ellipse[1][0])
-        print("minor axis",minor_axis, "major_axis", major_axis)
+        print("minor axis",minor_axis, "major_axis", major_axis, "center", cenx, ceny)
         if minor_axis > min_sat_radius_extend:
             axis1 = ellipse[1][0] + expansion
             axis2 = ellipse[1][1] + expansion
