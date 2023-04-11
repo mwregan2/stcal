@@ -519,6 +519,7 @@ def extend_ellipses(gdq_cube, intg, grp, ellipses, sat_flag, jump_flag,
     for ellipse in ellipses:
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
+        print("ee axis1", ellipse[1][0], "axis2", ellipse[1][1], "center ",ceny, cenx)
         # Expand the ellipse by the expansion factor. The number of pixels
         # added to both axes is
         # the number of pixels added to the minor axis. This prevents very
@@ -538,6 +539,7 @@ def extend_ellipses(gdq_cube, intg, grp, ellipses, sat_flag, jump_flag,
             axis2 = ellipse[1][1] + expansion
         axis1 = min(axis1, max_extended_radius)
         axis2 = min(axis2, max_extended_radius)
+        print("ee after axis1", axis1, "axis2", axis2)
         alpha = ellipse[2]
         image = cv.ellipse(image, (round(ceny), round(cenx)), (round(axis1 / 2),
                            round(axis2 / 2)), alpha, 0, 360,
