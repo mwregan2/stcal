@@ -440,7 +440,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
     """
 
     log.info('Flagging large Snowballs')
-
+    print(" input params", "min_sat_area", min_sat_area, "max_extended_radius", max_extended_radius)
     n_showers_grp = []
     for integration in range(gdq.shape[0]):
         for group in range(1, gdq.shape[1]):
@@ -490,14 +490,14 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
         cenx = ellipse[0][1]
         minor_axis = min(ellipse[1][1], ellipse[1][0])
         major_axis = max(ellipse[1][1], ellipse[1][0])
-        print("minor axis",minor_axis, "major_axis", major_axis, "center", cenx, ceny)
+        print("sat minor axis",minor_axis, "major_axis", major_axis, "center", cenx, ceny)
         if minor_axis > min_sat_radius_extend:
             axis1 = ellipse[1][0] + expansion
             axis2 = ellipse[1][1] + expansion
             alpha = ellipse[2]
             axis1 = min(axis1, max_extended_radius)
             axis2 = min(axis2, max_extended_radius)
-            print("axis 1", axis1, "axis2", axis2)
+            print("sat axis 1", axis1, "axis2", axis2)
             image = cv.ellipse(image, (round(ceny), round(cenx)),
                                (round((axis1 + 0.5)/2),
                                round((axis2 + 0.5)/2)), alpha, 0, 360, (0, 0, 22), -1)
@@ -519,7 +519,7 @@ def extend_ellipses(gdq_cube, intg, grp, ellipses, sat_flag, jump_flag,
     for ellipse in ellipses:
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
-        print("ee axis1", ellipse[1][0], "axis2", ellipse[1][1], "center ",ceny, cenx)
+        print("ee axis1", ellipse[1][0], "axis2", ellipse[1][1], "center ", ceny, cenx)
         # Expand the ellipse by the expansion factor. The number of pixels
         # added to both axes is
         # the number of pixels added to the minor axis. This prevents very
