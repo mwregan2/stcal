@@ -489,7 +489,8 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
         minor_axis = min(ellipse[1][1], ellipse[1][0])
-        print('minor axis ', minor_axis, 'center', ceny, cenx)
+        major_axis = max(ellipse[1][1], ellipse[1][0])
+        print("minor axis",minor_axis, "major_axis", major_axis)
         if minor_axis > min_sat_radius_extend:
             axis1 = ellipse[1][0] + expansion
             axis2 = ellipse[1][1] + expansion
@@ -497,7 +498,6 @@ def extend_saturation(cube, grp, sat_ellipses, sat_flag,
             axis1 = min(axis1, max_extended_radius)
             axis2 = min(axis2, max_extended_radius)
             print("axis 1", axis1, "axis2", axis2)
-
             image = cv.ellipse(image, (round(ceny), round(cenx)),
                                (round((axis1 + 0.5)/2),
                                round((axis2 + 0.5)/2)), alpha, 0, 360, (0, 0, 22), -1)
