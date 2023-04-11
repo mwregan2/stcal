@@ -458,7 +458,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
             if sat_required_snowball:
                 low_threshold = edge_size
                 high_threshold = max(0, gdq.shape[2] - edge_size)
-
+                print("low", low_threshold, "high", high_threshold)
                 gdq, snowballs = make_snowballs(gdq, integration, group,
                                                 jump_ellipses, sat_ellipses,
                                                 low_threshold, high_threshold,
@@ -587,9 +587,11 @@ def make_snowballs(gdq, integration, group, jump_ellipses, sat_ellipses,
     # Ths routine will create a list of snowballs (ellipses) that have the
     # center
     # of the saturation circle within the enclosing jump rectangle.
+    print("Group", group, "num jump ellip", len(jump_ellipses), "num sat ellip", len(sat_ellipses))
     snowballs = []
     for jump in jump_ellipses:
         if near_edge(jump, low_threshold, high_threshold):
+            print("near edge",jump)
             snowballs.append(jump)
         else:
             for sat in sat_ellipses:
