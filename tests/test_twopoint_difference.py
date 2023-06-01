@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-
+from astropy.io import fits
 from stcal.jump.twopoint_difference import find_crs, calc_med_first_diffs
 
 
@@ -1018,3 +1018,17 @@ def test_median_func():
     arr = np.zeros(4 * 2 * 2).reshape(4, 2, 2)
     arr[:, 0, 0] = np.array([-1., -2., np.nan, np.nan])
     assert calc_med_first_diffs(arr)[0, 0] == -1
+
+def test_5grp_allTSO():
+    hdul = fits.open("obs2508_noshower_sigclip_base_00_dark_current.fits")
+    gdq = hdul['groupdq'].data
+    data = hdul['sci'].data
+    readnoise = 25
+    read_noise = np.full((gdq.shape[2], gdq.shape[3]), readnoise, dtype=np.float32)
+
+    gdq, row_below_gdq, row_above_gdq = \
+        find_crs(data, gdq, read_noise, 3, 4, 5, 1, False, 1000, 10, DQFLAGS,
+                 after_jump_flag_e1=0.0, after_jump_flag_n1=0,
+                 after_jump_flag_e2=0.0, after_jump_flag_n2=0,
+                 copy_arrs=True)
+    fits.writeto("new_sigma_clip_base.fits", gdq, overwrite=True)
