@@ -1022,12 +1022,12 @@ def test_median_func():
 def test_5grp_allTSO():
     hdul = fits.open("obs2508_noshower_sigclip_base_00_dark_current.fits")
     gdq = hdul['groupdq'].data
-    data = hdul['sci'].data
+    data = hdul['sci'].data * 5.5
     readnoise = 25
     read_noise = np.full((gdq.shape[2], gdq.shape[3]), readnoise, dtype=np.float32)
 
     gdq, row_below_gdq, row_above_gdq = \
-        find_crs(data, gdq, read_noise, 3, 4, 5, 1, False, 1000, 10, DQFLAGS,
+        find_crs(data, gdq, read_noise, 4, 6, 5, 1, True, 1000, 10, DQFLAGS,
                  after_jump_flag_e1=0.0, after_jump_flag_n1=0,
                  after_jump_flag_e2=0.0, after_jump_flag_n2=0,
                  copy_arrs=True)
