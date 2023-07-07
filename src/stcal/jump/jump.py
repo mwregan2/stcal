@@ -705,8 +705,8 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     read_noise_2 = readnoise_2d**2
     data = indata.copy()
     num_iterations = 2
-    extended_emission_cube = np.zeros(num_iterations, num_iterations, data.shape[1],
-                                      data.shape[2], data.shape[3])
+    extended_emission_cube = np.zeros(shape=(num_iterations, num_iterations, data.shape[1],
+                                      data.shape[2], data.shape[3]), dtype=np.int16)
     for iteration in range(num_iterations):
         data[gdq == sat_flag] = np.nan
         data[gdq == 1] = np.nan
