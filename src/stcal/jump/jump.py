@@ -758,7 +758,7 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
                                                     ncols), dtype=np.uint8)
                 exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
                 extended_emission[exty, extx] = 1
-                extended_emission_cube[iteration, intg, grp, , :, :] = \
+                extended_emission_cube[iteration, intg, grp, :, :] = \
                     extended_emission
                 #  find the contours of the extended emission
                 contours, hierarchy = cv.findContours(extended_emission,
