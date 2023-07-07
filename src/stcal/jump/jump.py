@@ -705,6 +705,8 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     read_noise_2 = readnoise_2d**2
     data = indata.copy()
     num_iterations = 2
+    extended_emission_cube = np.zeros(num_iterations, num_iterations, data.shape[1],
+                                      data.shape[2]. data.shape[3])
     for iteration in range(num_iterations):
         data[gdq == sat_flag] = np.nan
         data[gdq == 1] = np.nan
@@ -756,6 +758,8 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
                                                     ncols), dtype=np.uint8)
                 exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
                 extended_emission[exty, extx] = 1
+                extended_emission_cube[iteration, intg, grp, , :, :] = \
+                    extended_emission
                 #  find the contours of the extended emission
                 contours, hierarchy = cv.findContours(extended_emission,
                                                       cv.RETR_EXTERNAL,
@@ -820,4 +824,5 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
                                            num_grps_masked=num_grps_masked,
                                            max_extended_radius=max_extended_radius)
         fits.writeto("newgdq"+str(iteration).zfill(2)+".fits",gdq, overwrite=True)
+    fits.writeto("extended_emission_cube.fits", extended_emission_cube, overwrite=True)
     return gdq, len(all_ellipses)
