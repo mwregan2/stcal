@@ -4,7 +4,7 @@ import time
 import numpy as np
 import cv2 as cv
 import astropy.stats as stats
-
+from astropy.io import fits
 from astropy.convolution import Ring2DKernel
 from astropy.convolution import convolve
 
@@ -704,7 +704,7 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     """
     read_noise_2 = readnoise_2d**2
     data = indata.copy()
-    num_iterations = 2
+    num_iterations = 1
     for iteration in range(num_iterations):
         data[gdq == sat_flag] = np.nan
         data[gdq == 1] = np.nan
@@ -720,6 +720,8 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
             # calculate sigma for each pixel
             if nints <= minimum_sigclip_groups:
                 median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
+                if intg == 0:
+                    fits.writeto("median_diffs.fits", median_diffs, overwrite=True)
                 sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
                 # The difference from the median difference for each group
                 e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
