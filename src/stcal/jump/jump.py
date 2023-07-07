@@ -704,115 +704,117 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     """
     read_noise_2 = readnoise_2d**2
     data = indata.copy()
-    data[gdq == sat_flag] = np.nan
-    data[gdq == 1] = np.nan
-    data[gdq == jump_flag] = np.nan
-    all_ellipses = []
-    first_diffs = np.diff(data, axis=1)
-    first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
-    nints = data.shape[0]
-    if nints > minimum_sigclip_groups:
-        mean, median, stddev = stats.sigma_clipped_stats(first_diffs_masked, sigma=5,
-                                                         axis=0)
-    for intg in range(nints):
-        # calculate sigma for each pixel
-        if nints <= minimum_sigclip_groups:
-            median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
-            sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
-            # The difference from the median difference for each group
-            e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
-            # SNR ratio of each diff.
-            ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
-
-        #  The convolution kernal creation
-        ring_2D_kernel = Ring2DKernel(inner, outer)
-        ngrps = data.shape[1]
-        for grp in range(1, ngrps):
-            if nints > minimum_sigclip_groups:
-                median_diffs = median[grp-1]
-                sigma = stddev[grp-1]
+    num_iterations = 2
+    for iteration in range(num_iterations):
+        data[gdq == sat_flag] = np.nan
+        data[gdq == 1] = np.nan
+        data[gdq == jump_flag] = np.nan
+        all_ellipses = []
+        first_diffs = np.diff(data, axis=1)
+        first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
+        nints = data.shape[0]
+        if nints > minimum_sigclip_groups:
+            mean, median, stddev = stats.sigma_clipped_stats(first_diffs_masked, sigma=5,
+                                                             axis=0)
+        for intg in range(nints):
+            # calculate sigma for each pixel
+            if nints <= minimum_sigclip_groups:
+                median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
+                sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
                 # The difference from the median difference for each group
                 e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
                 # SNR ratio of each diff.
                 ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
-            masked_ratio = ratio[grp-1].copy()
-            jumpy, jumpx = np.where(gdq[intg, grp, :, :] == jump_flag)
-            #  mask pix. that are already flagged as jump
-            masked_ratio[jumpy, jumpx] = np.nan
 
-            saty, satx = np.where(gdq[intg, grp, :, :] == sat_flag)
+            #  The convolution kernal creation
+            ring_2D_kernel = Ring2DKernel(inner, outer)
+            ngrps = data.shape[1]
+            for grp in range(1, ngrps):
+                if nints > minimum_sigclip_groups:
+                    median_diffs = median[grp-1]
+                    sigma = stddev[grp-1]
+                    # The difference from the median difference for each group
+                    e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
+                    # SNR ratio of each diff.
+                    ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
+                masked_ratio = ratio[grp-1].copy()
+                jumpy, jumpx = np.where(gdq[intg, grp, :, :] == jump_flag)
+                #  mask pix. that are already flagged as jump
+                masked_ratio[jumpy, jumpx] = np.nan
 
-            #  mask pix. that are already flagged as sat.
-            masked_ratio[saty, satx] = np.nan
+                saty, satx = np.where(gdq[intg, grp, :, :] == sat_flag)
 
-            masked_smoothed_ratio = convolve(masked_ratio, ring_2D_kernel)
-            nrows = ratio.shape[1]
-            ncols = ratio.shape[2]
-            extended_emission = np.zeros(shape=(nrows,
-                                                ncols), dtype=np.uint8)
-            exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
-            extended_emission[exty, extx] = 1
-            #  find the contours of the extended emission
-            contours, hierarchy = cv.findContours(extended_emission,
-                                                  cv.RETR_EXTERNAL,
-                                                  cv.CHAIN_APPROX_SIMPLE)
-            #  get the countours that are above the minimum size
-            bigcontours = [con for con in contours if cv.contourArea(con) >
-                           min_shower_area]
-            #  get the minimum enclosing rectangle which is the same as the
-            # minimum enclosing ellipse
-            ellipses = [cv.minAreaRect(con) for con in bigcontours]
+                #  mask pix. that are already flagged as sat.
+                masked_ratio[saty, satx] = np.nan
+
+                masked_smoothed_ratio = convolve(masked_ratio, ring_2D_kernel)
+                nrows = ratio.shape[1]
+                ncols = ratio.shape[2]
+                extended_emission = np.zeros(shape=(nrows,
+                                                    ncols), dtype=np.uint8)
+                exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
+                extended_emission[exty, extx] = 1
+                #  find the contours of the extended emission
+                contours, hierarchy = cv.findContours(extended_emission,
+                                                      cv.RETR_EXTERNAL,
+                                                      cv.CHAIN_APPROX_SIMPLE)
+                #  get the countours that are above the minimum size
+                bigcontours = [con for con in contours if cv.contourArea(con) >
+                               min_shower_area]
+                #  get the minimum enclosing rectangle which is the same as the
+                # minimum enclosing ellipse
+                ellipses = [cv.minAreaRect(con) for con in bigcontours]
 
 
-            expand_by_ratio = True
-            expansion = 1.0
-            plane = gdq[intg, grp, :, :]
-            nrows = plane.shape[0]
-            ncols = plane.shape[1]
-            image = np.zeros(shape=(nrows, ncols, 3), dtype=np.uint8)
-            image2 = np.zeros_like(image)
-            cv.drawContours(image2, bigcontours, -1, (0, 0, jump_flag), -1)
-            for ellipse in ellipses:
-                ceny = ellipse[0][0]
-                cenx = ellipse[0][1]
-                # Expand the ellipse by the expansion factor. The number of pixels
-                # added to both axes is
-                # the number of pixels added to the minor axis. This prevents very
-                # large flagged ellipses
-                # with high axis ratio ellipses. The major and minor axis are not
-                # always the same index.
-                # Therefore, we have to test to find which is actually the minor axis.
-                if expand_by_ratio:
-                    if ellipse[1][1] < ellipse[1][0]:
-                        axis1 = ellipse[1][0] + (expansion - 1.0) * ellipse[1][1]
-                        axis2 = ellipse[1][1] * expansion
+                expand_by_ratio = True
+                expansion = 1.0
+                plane = gdq[intg, grp, :, :]
+                nrows = plane.shape[0]
+                ncols = plane.shape[1]
+                image = np.zeros(shape=(nrows, ncols, 3), dtype=np.uint8)
+                image2 = np.zeros_like(image)
+                cv.drawContours(image2, bigcontours, -1, (0, 0, jump_flag), -1)
+                for ellipse in ellipses:
+                    ceny = ellipse[0][0]
+                    cenx = ellipse[0][1]
+                    # Expand the ellipse by the expansion factor. The number of pixels
+                    # added to both axes is
+                    # the number of pixels added to the minor axis. This prevents very
+                    # large flagged ellipses
+                    # with high axis ratio ellipses. The major and minor axis are not
+                    # always the same index.
+                    # Therefore, we have to test to find which is actually the minor axis.
+                    if expand_by_ratio:
+                        if ellipse[1][1] < ellipse[1][0]:
+                            axis1 = ellipse[1][0] + (expansion - 1.0) * ellipse[1][1]
+                            axis2 = ellipse[1][1] * expansion
+                        else:
+                            axis1 = ellipse[1][0] * expansion
+                            axis2 = ellipse[1][1] + (expansion - 1.0) * ellipse[1][0]
                     else:
-                        axis1 = ellipse[1][0] * expansion
-                        axis2 = ellipse[1][1] + (expansion - 1.0) * ellipse[1][0]
-                else:
-                    axis1 = ellipse[1][0] + expansion
-                    axis2 = ellipse[1][1] + expansion
-                axis1 = min(axis1, max_extended_radius)
-                axis2 = min(axis2, max_extended_radius)
-                alpha = ellipse[2]
-                image = cv.ellipse(image, (round(ceny), round(cenx)), (round(axis1 / 2),
-                                                                       round(axis2 / 2)), alpha, 0, 360,
-                                   (0, 0, jump_flag), -1)
-            if len(ellipses) > 0:
-                # add all the showers for this integration to the list
-                all_ellipses.append([intg, grp, ellipses])
-    if all_ellipses:
-        #  Now we actually do the flagging of the pixels inside showers.
-        # This is deferred until all showers are detected. because the showers
-        # can flag future groups and would confuse the detection algorthim if
-        # we worked on groups that already had some flagged showers.
-        for showers in all_ellipses:
-            intg = showers[0]
-            grp = showers[1]
-            ellipses = showers[2]
-            gdq, num = extend_ellipses(gdq, intg, grp, ellipses, sat_flag,
-                                       jump_flag, expansion=ellipse_expand,
-                                       expand_by_ratio=True,
-                                       num_grps_masked=num_grps_masked,
-                                       max_extended_radius=max_extended_radius)
+                        axis1 = ellipse[1][0] + expansion
+                        axis2 = ellipse[1][1] + expansion
+                    axis1 = min(axis1, max_extended_radius)
+                    axis2 = min(axis2, max_extended_radius)
+                    alpha = ellipse[2]
+                    image = cv.ellipse(image, (round(ceny), round(cenx)), (round(axis1 / 2),
+                                                                           round(axis2 / 2)), alpha, 0, 360,
+                                       (0, 0, jump_flag), -1)
+                if len(ellipses) > 0:
+                    # add all the showers for this integration to the list
+                    all_ellipses.append([intg, grp, ellipses])
+        if all_ellipses:
+            #  Now we actually do the flagging of the pixels inside showers.
+            # This is deferred until all showers are detected. because the showers
+            # can flag future groups and would confuse the detection algorthim if
+            # we worked on groups that already had some flagged showers.
+            for showers in all_ellipses:
+                intg = showers[0]
+                grp = showers[1]
+                ellipses = showers[2]
+                gdq, num = extend_ellipses(gdq, intg, grp, ellipses, sat_flag,
+                                           jump_flag, expansion=ellipse_expand,
+                                           expand_by_ratio=True,
+                                           num_grps_masked=num_grps_masked,
+                                           max_extended_radius=max_extended_radius)
     return gdq, len(all_ellipses)
