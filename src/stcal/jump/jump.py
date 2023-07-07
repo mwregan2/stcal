@@ -819,4 +819,5 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
                                            expand_by_ratio=True,
                                            num_grps_masked=num_grps_masked,
                                            max_extended_radius=max_extended_radius)
+        fits.writeto("newgdq"+str(iteration).zfill(2)+".fits",gdq, overwrite=True)
     return gdq, len(all_ellipses)
