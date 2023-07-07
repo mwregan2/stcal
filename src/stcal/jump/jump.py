@@ -704,7 +704,7 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     """
     read_noise_2 = readnoise_2d**2
     data = indata.copy()
-    num_iterations = 1
+    num_iterations = 2
     for iteration in range(num_iterations):
         data[gdq == sat_flag] = np.nan
         data[gdq == 1] = np.nan
@@ -721,7 +721,7 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
             if nints <= minimum_sigclip_groups:
                 median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
                 if intg == 0:
-                    fits.writeto("median_diffs.fits", median_diffs, overwrite=True)
+                    fits.writeto("median_diffs"+str(iteration).zfill(2)+".fits", median_diffs, overwrite=True)
                 sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
                 # The difference from the median difference for each group
                 e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
