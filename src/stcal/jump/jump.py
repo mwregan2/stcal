@@ -717,7 +717,7 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
     for intg in range(nints):
         # calculate sigma for each pixel
         if nints <= minimum_sigclip_groups:
-            median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
+#            median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
             median_diffs = np.nanpercentile(first_diffs_masked[intg], 25, axis=0)
             sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
             # The difference from the median difference for each group
