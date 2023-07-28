@@ -5,6 +5,7 @@ import numpy as np
 import cv2 as cv
 import astropy.stats as stats
 import csv
+import uuid
 from astropy.convolution import Ring2DKernel
 from astropy.convolution import convolve
 
@@ -509,7 +510,8 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
                                               sat_flag, jump_flag,
                                               expansion=expand_factor,
                                               max_extended_radius=max_extended_radius)
-         with open('snowballs.csv', 'w', newline='') as file:
+        filename = uuid.uuid4().hex
+        with open(filename, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerows(snowballs)
     return total_snowballs
