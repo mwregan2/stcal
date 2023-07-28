@@ -478,6 +478,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
     nints = gdq.shape[0]
     ngrps = gdq.shape[1]
     for integration in range(nints):
+        snowball_list = []
         for group in range(1, ngrps):
             current_gdq = 1.0 * gdq[integration, group, :, :]
             prev_gdq = 1.0 * gdq[integration, group - 1, :, :]
@@ -505,6 +506,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
                 snowballs = jump_ellipses
             n_showers_grp.append(len(snowballs))
             total_snowballs += len(snowballs)
+            snowball_list = snowball_list + snowballs
             gdq, num_events = extend_ellipses(gdq, integration, group,
                                               snowballs,
                                               sat_flag, jump_flag,
@@ -513,7 +515,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
         filename = uuid.uuid4().hex
         with open('csv/'+filename+'.csv', 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerows(snowballs)
+            writer.writerows(snowball_list)
     return total_snowballs
 
 def extend_saturation(cube, grp, sat_ellipses, sat_flag,
