@@ -511,7 +511,7 @@ def flag_large_events(gdq, jump_flag, sat_flag, min_sat_area=1,
                                               expansion=expand_factor,
                                               max_extended_radius=max_extended_radius)
         filename = uuid.uuid4().hex
-        with open(filename+'.csv', 'w', newline='') as file:
+        with open('csv/'+filename+'.csv', 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerows(snowballs)
     return total_snowballs
