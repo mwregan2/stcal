@@ -826,8 +826,8 @@ def find_faint_extended(indata, gdq, readnoise_2d, nframes, minimum_sigclip_grou
                                        expand_by_ratio=True,
                                        num_grps_masked=num_grps_masked,
                                        max_extended_radius=max_extended_radius)
-            filename = uuid.uuid4().hex
-            with open('csv/' + filename + '_showers.csv', 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerows(ellipses)
+    filename = uuid.uuid4().hex
+    with open('csv/' + filename + '_showers.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(all_ellipses)
     return gdq, len(all_ellipses)
