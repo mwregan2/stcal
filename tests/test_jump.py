@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from astropy.io import fits
 
 from stcal.jump.jump import (
     calc_num_slices,
@@ -336,6 +337,46 @@ def test_inside_ellipes5():
     assert result
 
 
+<<<<<<< Updated upstream
+=======
+#@pytest.mark.skip(" used for local testing")
+def test_shower_problems():
+#   gdq = fits.getdata("persistgdq.fits")
+    hdul = fits.open("obs1517_wshower_05_jump.fits")
+    gdq = hdul['groupdq'].data
+    data = hdul['sci'].data
+    print(gdq.shape[0])
+#    gdq = gdq[:, 0:10, :, :]
+    readnoise_2d = fits.getdata('jwst_miri_readnoise_0085.fits')
+    gain2d = fits.getdata("jwst_miri_gain_0008.fits")
+    readnoise_2d_e = readnoise_2d * gain2d
+    extend_snr_threshold = 1.3
+    extend_min_area = 90
+    extend_inner_radius = 1
+    extend_outer_radius = 2.6
+    sat_flag = 2
+    jump_flag = 4
+    extend_ellipse_expand_ratio = 1.1
+    grps_masked_after_shower = 5
+    max_extended_radius = 200
+
+    gdq, num_showers = find_faint_extended(
+                        data,
+                        gdq,
+                        readnoise_2d_e,
+                        1,
+                        1000,
+                        snr_threshold=extend_snr_threshold,
+                        min_shower_area=extend_min_area,
+                        inner=extend_inner_radius,
+                        outer=extend_outer_radius,
+                        sat_flag=sat_flag,
+                        jump_flag=jump_flag,
+                        ellipse_expand=extend_ellipse_expand_ratio,
+                        num_grps_masked=grps_masked_after_shower,
+                        max_extended_radius=max_extended_radius)
+    fits.writeto("showerflaggedgdq.fits", gdq, overwrite=True)
+>>>>>>> Stashed changes
 def test_calc_num_slices():
     n_rows = 20
     max_available_cores = 10

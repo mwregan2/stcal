@@ -56,6 +56,7 @@ def base_neg_med_rates_single_integration():
 
     return slopes, cube, optional, gls_dummy
 
+def test_segment_weighting():
 
 def test_neg_med_rates_single_integration_slope():
     """

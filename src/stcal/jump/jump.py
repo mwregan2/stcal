@@ -1,7 +1,7 @@
 import logging
 import multiprocessing
 import time
-
+from astropy.io import fits
 import cv2 as cv
 import numpy as np
 from astropy import stats
@@ -444,6 +444,8 @@ def detect_jumps(
             )
             log.info("Total snowballs = %i", total_snowballs)
             number_extended_events = total_snowballs
+        fits.writeto("incoming_data_find_faint_data.fits", data, overwrite=True)
+        fits.writeto("incoming_data_find_faint_gdq.fits", gdq, overwrite=True)
         if find_showers:
             gdq, num_showers = find_faint_extended(
                 data,
@@ -881,6 +883,12 @@ def find_faint_extended(
             extended_emission = np.zeros(shape=(nrows, ncols), dtype=np.uint8)
             exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
             extended_emission[exty, extx] = 1
+            if grp//10 * 10 == grp:
+                print("on grp ", grp)
+            if intg == 0 and grp == 130:
+                fits.writeto("extended_emission1.fits", extended_emission, overwrite=True)
+                fits.writeto("masked_smoothed_ratio1.fits", masked_smoothed_ratio, overwrite=True)
+                fits.writeto("masked_ratio.fits1", masked_ratio.filled(np.nan), overwrite=True)
             #  find the contours of the extended emission
             contours, hierarchy = cv.findContours(extended_emission, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
             #  get the contours that are above the minimum size
