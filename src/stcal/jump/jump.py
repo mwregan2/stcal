@@ -886,7 +886,7 @@ def find_faint_extended(
             if grp//10 * 10 == grp:
                 print("on grp ", grp)
             if intg == 0 and grp == 130:
-                fits.writeto("extended_emission1.fits", extended_emission, overwrite=True)
+                fits.writeto("extended_emission1.fits", extended_emission,  overwrite=True)
                 fits.writeto("masked_smoothed_ratio1.fits", masked_smoothed_ratio, overwrite=True)
                 fits.writeto("masked_ratio.fits1", masked_ratio.filled(np.nan), overwrite=True)
             #  find the contours of the extended emission
