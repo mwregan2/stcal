@@ -337,15 +337,12 @@ def test_inside_ellipes5():
     assert result
 
 
-<<<<<<< Updated upstream
-=======
 #@pytest.mark.skip(" used for local testing")
 def test_shower_problems():
 #   gdq = fits.getdata("persistgdq.fits")
-    hdul = fits.open("obs1517_wshower_05_jump.fits")
-    gdq = hdul['groupdq'].data
-    data = hdul['sci'].data
-    print(gdq.shape[0])
+    data = fits.getdata("incoming_data_find_faint_data.fits")
+    gdq = fits.getdata("incoming_data_find_faint_gdq.fits")
+    print("GDQ shape", gdq.shape[0])
 #    gdq = gdq[:, 0:10, :, :]
     readnoise_2d = fits.getdata('jwst_miri_readnoise_0085.fits')
     gain2d = fits.getdata("jwst_miri_gain_0008.fits")
@@ -376,7 +373,7 @@ def test_shower_problems():
                         num_grps_masked=grps_masked_after_shower,
                         max_extended_radius=max_extended_radius)
     fits.writeto("showerflaggedgdq.fits", gdq, overwrite=True)
->>>>>>> Stashed changes
+
 def test_calc_num_slices():
     n_rows = 20
     max_available_cores = 10
