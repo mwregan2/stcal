@@ -483,6 +483,12 @@ def detect_jumps(
                 num_grps_masked=grps_masked_after_shower,
                 max_extended_radius=max_extended_radius,
             )
+            # remove redundant bits in pixels that have jump flagged but were
+            # already flagged as do_not_use or saturated.
+            gdq[gdq == np.bitwise_or(dqflags['DO_NOT_USE'], dqflags['JUMP_DET'])] = \
+                dqflags['DO_NOT_USE']
+            gdq[gdq == np.bitwise_or(dqflags['SATURATED'], dqflags['JUMP_DET'])] = \
+                dqflags['SATURATED']
             log.info("Total showers= %i", num_showers)
             number_extended_events = num_showers
     elapsed = time.time() - start
