@@ -491,6 +491,7 @@ def detect_jumps(
                 dqflags['SATURATED']
             log.info("Total showers= %i", num_showers)
             number_extended_events = num_showers
+            print("ran cleanup")
     elapsed = time.time() - start
     log.info("Total elapsed time = %g sec", elapsed)
 
