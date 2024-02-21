@@ -881,6 +881,7 @@ def find_faint_extended(
     outer=2,
     sat_flag=2,
     jump_flag=4,
+    dnu_flag=1,
     ellipse_expand=1.1,
     num_grps_masked=25,
     max_extended_radius=200,
@@ -927,10 +928,11 @@ def find_faint_extended(
     """
     read_noise_2d_sqr = readnoise_2d**2
     data = indata.copy()
+    gdq[gdq == np.bitwise_or(dnu_flag, jump_flag)] = dnu_flag
+    gdq[gdq == np.bitwise_or(dnu_flag, sat_flag)] = dnu_flag
     data[gdq == sat_flag] = np.nan
-    data[gdq == 1] = np.nan
     data[gdq == jump_flag] = np.nan
-    data[gdq == 3] = np.nan
+    data[gdq == dnu_flag] = np.nan
     all_ellipses = []
     first_diffs = np.diff(data, axis=1)
     first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
