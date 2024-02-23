@@ -947,6 +947,7 @@ def find_faint_extended(
             ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
             ratio_cube[intg, :, :, :] = ratio
             sigma_cube[intg, :, :] = sigma
+            median_cube[intg, :, :] = median_diffs
             e_jump_cube[intg, :, :, :] = e_jump
         #  The convolution kernel creation
         ring_2D_kernel = Ring2DKernel(inner, outer)
