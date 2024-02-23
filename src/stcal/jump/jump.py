@@ -927,6 +927,8 @@ def find_faint_extended(
     first_diffs = np.diff(data, axis=1)
     first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
     nints = data.shape[0]
+    masked_smoothed_ratio_cube = np.zeros_like(data)
+    extended_emission_cube = np.zeros_like(data)
     e_jump_cube = np.zeros(shape=(data.shape[0], data.shape[1] - 1, data.shape[2], data.shape[3]))
     median_cube = np.zeros(shape=(data.shape[0], data.shape[2], data.shape[3]))
     sigma_cube = np.zeros(shape=(data.shape[0], data.shape[2], data.shape[3]))
@@ -943,6 +945,8 @@ def find_faint_extended(
             # SNR ratio of each diff.
             ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
             ratio_cube[intg, :, :, :] = ratio
+            sigma_cube[intg, :, :, :] = sigma
+            e_jump_cube[intg, :, :, :] = e_jump
         #  The convolution kernel creation
         ring_2D_kernel = Ring2DKernel(inner, outer)
         ngrps = data.shape[1]
@@ -1022,12 +1026,12 @@ def find_faint_extended(
                 # add all the showers for this integration to the list
                 all_ellipses.append([intg, grp, ellipses])
     total_showers = 0
-    fits.writeto("extended_emission_cube.fits", extended_emission_cube, overwrite=True)
-    fits.writeto("sigma_cube.fits", sigma_cube, overwrite=True)
-    fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True)
-    fits.writeto("median_cube.fits", median_cube, overwrite=True)
-    fits.writeto("e_jump_cube.fits", e_jump_cube, overwrite=True)
-    fits.writeto("masked_smoothed_ratio_cube.fits", masked_smoothed_ratio_cube, overwrite=True)
+    fits.writeto("bextended_emission_cube.fits", extended_emission_cube, overwrite=True)
+    fits.writeto("bsigma_cube.fits", sigma_cube, overwrite=True)
+    fits.writeto("bratio_cube.fits", ratio_cube, overwrite=True)
+    fits.writeto("bmedian_cube.fits", median_cube, overwrite=True)
+    fits.writeto("be_jump_cube.fits", e_jump_cube, overwrite=True)
+    fits.writeto("bmasked_smoothed_ratio_cube.fits", masked_smoothed_ratio_cube, overwrite=True)
     if all_ellipses:
         #  Now we actually do the flagging of the pixels inside showers.
         # This is deferred until all showers are detected. because the showers
