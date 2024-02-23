@@ -925,6 +925,7 @@ def find_faint_extended(
     data[gdq == jump_flag] = np.nan
     all_ellipses = []
     first_diffs = np.diff(data, axis=1)
+    fits.writeto("first_diffs.fits", first_diffs, overwrite=True)
     first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
     nints = data.shape[0]
     masked_smoothed_ratio_cube = np.zeros_like(data)
