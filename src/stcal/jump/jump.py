@@ -4,7 +4,7 @@ import time
 import numpy as np
 import cv2 as cv
 import astropy.stats as stats
-
+from astropy.io import fits
 from astropy.convolution import Ring2DKernel
 from astropy.convolution import convolve
 
@@ -1022,6 +1022,12 @@ def find_faint_extended(
                 # add all the showers for this integration to the list
                 all_ellipses.append([intg, grp, ellipses])
     total_showers = 0
+    fits.writeto("extended_emission_cube.fits", extended_emission_cube, overwrite=True)
+    fits.writeto("sigma_cube.fits", sigma_cube, overwrite=True)
+    fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True)
+    fits.writeto("median_cube.fits", median_cube, overwrite=True)
+    fits.writeto("e_jump_cube.fits", e_jump_cube, overwrite=True)
+    fits.writeto("masked_smoothed_ratio_cube.fits", masked_smoothed_ratio_cube, overwrite=True)
     if all_ellipses:
         #  Now we actually do the flagging of the pixels inside showers.
         # This is deferred until all showers are detected. because the showers
