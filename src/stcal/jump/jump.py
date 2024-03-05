@@ -723,7 +723,7 @@ def extend_ellipses(
             alpha,
             0,
             360,
-            (0, 0, jump_flag),
+            (0, 0, 9),
             -1,
         )
         jump_ellipse = image[:, :, 2]
