@@ -1023,7 +1023,7 @@ def find_faint_extended(
             if len(ellipses) > 0:
                 # add all the showers for this integration to the list
                 all_ellipses.append([intg, grp, ellipses])
-    fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True)
+    fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True )
     fits.writeto("e_jump_cube.fits", e_jump_cube, overwrite=True)
     fits.writeto("median_diffs_cube.fits", median_diffs_cube, overwrite=True)
     total_showers = 0
