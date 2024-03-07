@@ -4,7 +4,7 @@ import time
 import numpy as np
 import cv2 as cv
 import astropy.stats as stats
-
+from astropy.io import fits
 from astropy.convolution import Ring2DKernel
 from astropy.convolution import convolve
 
@@ -927,6 +927,8 @@ def find_faint_extended(
     first_diffs = np.diff(data, axis=1)
     first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
     nints = data.shape[0]
+    ratio_cube = np.zeros_like(first_diffs)
+    e_jump_cube = np.zeros_like(first_diffs)
     if nints > minimum_sigclip_groups:
         mean, median, stddev = stats.sigma_clipped_stats(first_diffs_masked, sigma=5, axis=0)
     for intg in range(nints):
@@ -938,6 +940,8 @@ def find_faint_extended(
             e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
             # SNR ratio of each diff.
             ratio = np.abs(e_jump) / sigma[np.newaxis, :, :]
+            ratio_cube[intg, :, :, :] = ratio
+            e_jump_cube[intg, :, :, :] = e_jump
         #  The convolution kernel creation
         ring_2D_kernel = Ring2DKernel(inner, outer)
         ngrps = data.shape[1]
@@ -1016,6 +1020,8 @@ def find_faint_extended(
             if len(ellipses) > 0:
                 # add all the showers for this integration to the list
                 all_ellipses.append([intg, grp, ellipses])
+    fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True)
+    fits.writeto("e_jump_cube.fits", e_jump_cube, overwrite=True)
     total_showers = 0
     if all_ellipses:
         #  Now we actually do the flagging of the pixels inside showers.
