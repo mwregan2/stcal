@@ -925,16 +925,19 @@ def find_faint_extended(
     data[gdq == jump_flag] = np.nan
     all_ellipses = []
     first_diffs = np.diff(data, axis=1)
+    fits.writeto("first_diffs.fits", first_diffs, overwrite=True)
     first_diffs_masked = np.ma.masked_array(first_diffs, mask=np.isnan(first_diffs))
     nints = data.shape[0]
     ratio_cube = np.zeros_like(first_diffs)
     e_jump_cube = np.zeros_like(first_diffs)
+    median_diffs_cube = np.zeros(shape=(data.shape[0], data.shape[2],data.shape[3]))
     if nints > minimum_sigclip_groups:
         mean, median, stddev = stats.sigma_clipped_stats(first_diffs_masked, sigma=5, axis=0)
     for intg in range(nints):
         # calculate sigma for each pixel
         if nints <= minimum_sigclip_groups:
             median_diffs = np.nanmedian(first_diffs_masked[intg], axis=0)
+            median_diffs_cube[intg, : :] = median_diffs
             sigma = np.sqrt(np.abs(median_diffs) + read_noise_2d_sqr / nframes)
             # The difference from the median difference for each group
             e_jump = first_diffs_masked[intg] - median_diffs[np.newaxis, :, :]
@@ -1022,6 +1025,7 @@ def find_faint_extended(
                 all_ellipses.append([intg, grp, ellipses])
     fits.writeto("ratio_cube.fits", ratio_cube, overwrite=True)
     fits.writeto("e_jump_cube.fits", e_jump_cube, overwrite=True)
+    fits.writeto("median_diffs_cube.fits", median_diffs_cube, overwrite=True)
     total_showers = 0
     if all_ellipses:
         #  Now we actually do the flagging of the pixels inside showers.
