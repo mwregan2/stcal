@@ -1330,7 +1330,8 @@ def ramp_fit_overall(
     warnings.filterwarnings("ignore", ".*divide by zero.*", RuntimeWarning)
 
     slope_int = the_num / the_den
-
+    print("int slope var", np.var(slope_int))
+    print("int slope mean", np.mean(slope_int))
     # Adjust DQ flags for NaNs.
     wh_nans = np.isnan(slope_int)
     dq_int[wh_nans] = np.bitwise_or(dq_int[wh_nans], ramp_data.flags_do_not_use)
@@ -1375,7 +1376,7 @@ def ramp_fit_overall(
         opt_res.sigslope_seg = opt_res.sigslope_seg[:, :f_max_seg, :, :]
         opt_res.yint_seg = opt_res.yint_seg[:, :f_max_seg, :, :]
         opt_res.sigyint_seg = opt_res.sigyint_seg[:, :f_max_seg, :, :]
-        opt_res.weights = (inv_var_both4[:, :f_max_seg, :, :])**2.
+        opt_res.weights = (inv_var_both4[:, :f_max_seg, :, :])
         opt_res.var_p_seg = var_p4[:, :f_max_seg, :, :]
         opt_res.var_r_seg = var_r4[:, :f_max_seg, :, :]
 
@@ -1435,7 +1436,7 @@ def ramp_fit_overall(
     log.debug('Number of pixels in 2D array: %d', nrows * ncols)
     log.debug('Shape of 2D image: (%d, %d)' % (imshape))
     log.debug('Shape of data cube: (%d, %d, %d)' % (orig_cubeshape))
-    log.debug('Buffer size (bytes): %d', buffsize)
+#    log.debug('Buffer size (bytes): %d', buffsize)
     log.debug('Number of rows per buffer: %d', nrows)
     log.info('Number of groups per integration: %d', orig_ngroups)
     log.info('Number of integrations: %d', n_int)

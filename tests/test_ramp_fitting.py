@@ -2,7 +2,7 @@ import numpy as np
 from stcal.ramp_fitting.ramp_fit import ramp_fit_data
 from stcal.ramp_fitting.ramp_fit_class import RampData
 from stcal.ramp_fitting.utils import compute_num_slices
-
+from astropy.io import fits
 
 DELIM = "=" * 70
 
@@ -28,6 +28,382 @@ JUMP = dqflags["JUMP_DET"]
 
 # -----------------------------------------------------------------------------
 #                           Test Suite
+def test_no_CRs_only_Read_CDS_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 10.0,  4.0
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 2
+    num_grps2 = 0
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=0.0001, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_no_CRs_only_Poisson_CDS_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 6.,  4
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 2
+    num_grps2 = 0
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=1000, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.01)
+
+def test_no_CRs_only_Poisson_rate_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 0.00001,  40
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 11
+    num_grps2 = 0
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=100, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_one_CR_equal_Poisson_semiramps_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 0.00001,  40
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 11
+    num_grps2 = 11
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=100, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_one_CR_20_80_Poisson_semiramps_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 0.00001,  40
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 5
+    num_grps2 = 17
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=100, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_no_CRs_only_readnoise_rate_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 20.0,  1
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 21
+    num_grps2 = 0
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=.1, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("STD of Slopes", np.std(slopes[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_one_CR_equal_only_read_equal_segs_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 20.0,  1
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 11
+    num_grps2 = 11
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=.1, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("STD of Slopes", np.std(slopes[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_one_CR_20_80_only_read_segs_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 20.0,  1
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 5
+    num_grps2 = 17
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=.1,  Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("STD of Slopes", np.std(slopes[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+def test_no_CRs_equal_noise_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 13.0,  4
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 21
+    num_grps2 = 0
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=3, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    print("STD of Slopes", np.std(slopes[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+
+def test_one_CR_equal_grps_equal_noise_rate_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 10.,  4
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 11
+    num_grps2 = 11
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=8, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("sqrt then Sums", np.mean(np.sqrt(slopes[2]) + np.sqrt(slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    print("STD of Slopes", np.std(slopes[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    print("Mean weight seg 1", np.mean(optional[7][0, 0, :, :]))
+    print("Mean weight seg 2", np.mean(optional[7][0, 1, :, :]))
+    print("Mean var P seg 1", np.mean(optional[2][0, 0, :, :]))
+    print("Mean var P seg 2", np.mean(optional[2][0, 1, :, :]))
+    print("Mean var R seg 1", np.mean(optional[3][0, 0, :, :]))
+    print("Mean var R seg 2", np.mean(optional[3][0, 1, :, :]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+
+
+def test_one_CR_20_80_equal_noise_rate_uncert():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, nrows, ncols = 1, 200, 200
+    rnoise_val, gain_val = 10.0,  4
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 4
+    num_grps2 = 18
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=3, Poisson=True, grptime=gtime,
+                         gain=gain_val, bias=0)
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    print("median diff", np.median(np.diff(ramp_data.data, axis=1)))
+    slopes, integ_info, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("mean of cds", np.mean(ramp_data.data[0,-1,:,:] ))
+    print("var of cds slope", np.var(ramp_data.data[0, -1, :, :]/30))
+    print("mean", np.median(slopes[0]))
+    print("data std", np.std(slopes[0]))
+    print("data var", np.var(slopes[0]))
+    print("P var", np.mean(slopes[2]))
+    print("R var", np.mean(slopes[3]))
+    print("Total Var", np.mean((slopes[2] + slopes[3])))
+    print("total std", np.mean(slopes[4]))
+    print("STD of Exp Slopes", np.std(slopes[0]))
+    print("STD of Int Slopes", np.std(integ_info[0]))
+    print("Mean ERR in Header", np.mean(slopes[4]))
+    print("Mean weight seg 1", np.mean(optional[7][0, 0, :, :]))
+    print("Mean weight seg 2", np.mean(optional[7][0, 1, :, :]))
+    print("Mean var P seg 1", np.mean(optional[2][0, 0, :, :]))
+    print("Mean var P seg 2", np.mean(optional[2][0, 1, :, :]))
+    print("Mean var R seg 1", np.mean(optional[3][0, 0, :, :]))
+    print("Mean var R seg 2", np.mean(optional[3][0, 1, :, :]))
+    np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
+
+
+def test_median_rate_calc():
+    """
+    Creates multi-integration data for testing ensuring negative median rates.
+    """
+    nints, ngroups, nrows, ncols = 3, 100, 1, 1
+    rnoise_val, gain_val = 10., 1.
+    nframes, gtime, dtime = 1, 1., 1
+    dims = (nints, ngroups, nrows, ncols)
+    var = (rnoise_val, gain_val)
+    tm = (nframes, gtime, dtime)
+    ramp_data, rnoise, gain = setup_inputs(dims, var, tm)
+
+    # Set up ramp (only read_noise
+    ramp_data.data = np.random.normal(loc=0.0, scale=rnoise/np.sqrt(2),
+                                 size=(ramp_data.data.shape[0], ramp_data.data.shape[1],
+                                       ramp_data.data.shape[2], ramp_data.data.shape[3]))
+
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+        ramp_data, buffsize, save_opt, rnoise, gain, algo, wt, ncores, dqflags)
+    print_slopes(slopes)
+
 
 def base_neg_med_rates_single_integration():
     """
@@ -1378,6 +1754,42 @@ def test_compute_num_slices():
 
 # -----------------------------------------------------------------------------
 #                           Set up functions
+def create_test_2seg_obs(readnoise, num_ints, num_grps1, num_grps2, ncols,
+                         nrows, tm, rate=0, Poisson=True, grptime=2.77,
+                         gain=4.0, bias=3000):
+        nframes, gtime, dtime = tm
+        rng = np.random.default_rng()
+        outcube1a = np.zeros(shape=(num_ints, num_grps1 + num_grps2, ncols, nrows), dtype=np.float32)
+        outcube1 = np.random.normal(loc=0.0, scale=readnoise / np.sqrt(2),
+                                    size=(num_ints, num_grps1+num_grps2+1, ncols, ncols))
+        if rate > 0:
+            pvalues = grptime * rate + (rng.poisson(lam=gain * rate * grptime,
+                               size=(num_ints, num_grps1 + num_grps2, ncols, nrows)) - gain * rate * grptime) / gain
+            for intg in range(num_ints):
+                outcube1a[intg, 0, :, :] = outcube1[intg, 0, :, :]
+                for grp in range(1, num_grps1 + num_grps2):
+                    outcube1a[intg, grp, :, :] = outcube1[intg, grp, :, :] + np.sum(pvalues[intg, 0:grp, :, :], axis=0)
+            outcube1f = outcube1a
+        else:
+            outcube1f = outcube1
+        outdata = outcube1f + bias
+        fits.writeto("outdata.fits", outdata, overwrite=True)
+#        print("cube mean values", np.mean(outdata[0,:,:,:], axis=(2, 3)))
+        outgdq = np.zeros_like(outdata, dtype=np.uint8)
+        if num_grps2 > 0:
+            outgdq[:, num_grps1, :, :] = 4
+        pixdq = np.zeros(shape=(ncols, nrows), dtype=np.int32)
+        err = np.ones(shape=(num_ints, num_grps1 + num_grps2+1, nrows, ncols), dtype=np.float32)
+        ramp_data = RampData()
+        ramp_data.set_arrays(
+            data=outdata, err=err, groupdq=outgdq, pixeldq=pixdq)
+        ramp_data.set_meta(
+            name="MIRI", frame_time=dtime, group_time=gtime, groupgap=0,
+            nframes=nframes, drop_frames1=None)
+        ramp_data.set_dqflags(dqflags)
+        readnoise_array = np.ones_like(pixdq) * readnoise
+        gain_array = np.ones_like(pixdq) * gain
+        return ramp_data, readnoise_array, gain_array
 
 def setup_inputs(dims, var, tm):
     """
