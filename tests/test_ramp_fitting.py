@@ -28,6 +28,41 @@ JUMP = dqflags["JUMP_DET"]
 
 # -----------------------------------------------------------------------------
 #                           Test Suite
+def test_Poisson_variance():
+    nints, nrows, ncols = 1, 1, 1
+    rnoise_val, gain_val = 10.0, 4.0
+    nframes, gtime, ftime = 1, 3, 3
+    tm = (nframes, gtime, ftime)
+    num_grps1 = 300
+    num_grps2 = 150
+    ramp_data, rnoise_array, gain_array = create_test_2seg_obs(rnoise_val, nints, num_grps1, num_grps2, ncols,
+                                                               nrows, tm, rate=100, Poisson=True, grptime=gtime,
+                                                               gain=gain_val, bias=0, sat_group=250)
+    print("ramp_data.data shape", ramp_data.data.shape)
+ #   print("ramp_data.data", ramp_data.data)
+ #   print("ramp_data.gdq", ramp_data.groupdq)
+    hdul = fits.open("/users/mregan/Downloads/miri_1276_00_1int_jump.fits")
+    data = hdul['SCI'].data[:, 214, 675]
+    gdq = hdul['GROUPDQ'].data[:, 214, 675]
+    print("gdq in", gdq.shape)
+    print("data in", data.shape)
+    ramp_data.data = data[np.newaxis, :, np.newaxis, np.newaxis]
+    ramp_data.groupdq = gdq[np.newaxis, :, np.newaxis, np.newaxis]
+    print("gdq",ramp_data.groupdq.shape)
+    print("data", ramp_data.data.shape)
+    refgain = fits.getdata("/users/mregan/Downloads/jwst_miri_gain_0019.fits")[214, 675]
+    refrnoise = fits.getdata('/users/mregan/Downloads/jwst_miri_readnoise_0085.fits')[214, 675]
+    rnoise_array = refrnoise[np.newaxis, np.newaxis]
+    gain_array = refgain[np.newaxis, np.newaxis]
+    # Run ramp fit on RampData
+    buffsize, save_opt, algo, wt, ncores = 512, True, "OLS", "optimal", "none"
+    slopes, cube, optional, gls_dummy = ramp_fit_data(
+    ramp_data, buffsize, save_opt, rnoise_array, gain_array, algo, wt, ncores, dqflags)
+    print("ramp_data.data shape", ramp_data.data.shape)
+    print("ramp slope", slopes[0])
+    print("P var", slopes[2])
+    print("R var", slopes[3])
+
 def test_no_CRs_only_Read_CDS_uncert():
     """
     Creates multi-integration data for testing ensuring negative median rates.
@@ -149,9 +184,6 @@ def test_one_CR_equal_Poisson_semiramps_uncert():
     print("total std", np.mean(slopes[4]))
     np.testing.assert_allclose(np.mean(slopes[4]), np.std(slopes[0]), rtol=0.1)
 def test_one_CR_20_80_Poisson_semiramps_uncert():
-    """
-    Creates multi-integration data for testing ensuring negative median rates.
-    """
     nints, nrows, ncols = 1, 200, 200
     rnoise_val, gain_val = 0.00001,  40
     nframes, gtime, ftime = 1, 3, 3
@@ -1756,7 +1788,7 @@ def test_compute_num_slices():
 #                           Set up functions
 def create_test_2seg_obs(readnoise, num_ints, num_grps1, num_grps2, ncols,
                          nrows, tm, rate=0, Poisson=True, grptime=2.77,
-                         gain=4.0, bias=3000):
+                         gain=4.0, bias=3000, sat_group=0, sat_value=100000):
         nframes, gtime, dtime = tm
         rng = np.random.default_rng()
         outcube1a = np.zeros(shape=(num_ints, num_grps1 + num_grps2, ncols, nrows), dtype=np.float32)
@@ -1776,8 +1808,13 @@ def create_test_2seg_obs(readnoise, num_ints, num_grps1, num_grps2, ncols,
         fits.writeto("outdata.fits", outdata, overwrite=True)
 #        print("cube mean values", np.mean(outdata[0,:,:,:], axis=(2, 3)))
         outgdq = np.zeros_like(outdata, dtype=np.uint8)
+        outgdq[:, 0, :, : ] = 1
+        outgdq[:, -1, :, :] = 1
         if num_grps2 > 0:
             outgdq[:, num_grps1, :, :] = 4
+        if sat_group > 0:
+            outgdq[:, sat_group:, :, :] = 2
+            outdata[:, sat_group:, :, :] = sat_value
         pixdq = np.zeros(shape=(ncols, nrows), dtype=np.int32)
         err = np.ones(shape=(num_ints, num_grps1 + num_grps2+1, nrows, ncols), dtype=np.float32)
         ramp_data = RampData()
