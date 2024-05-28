@@ -542,12 +542,13 @@ def test_inside_ellipes5():
     result = point_inside_ellipse(point, ellipse)
     assert result
 
-@pytest.mark.skip(" used for local testing")
+#@pytest.mark.skip(" used for local testing")
 def test_flag_persist_groups():
-#   gdq = fits.getdata("persistgdq.fits")
-    gdq = np.zeros(shape=(2,2,2,2))
-    print(gdq.shape[0])
-    gdq = gdq[:, 0:10, :, :]
+    #   gdq = fits.getdata("persistgdq.fits")
+    gdq = fits.getdata("../../../notebooks/ingdq.fits")
+    #    gdq = hdul['GROUPDQ'].data
+    print(gdq.shape)
+
     total_snowballs = flag_large_events(
         gdq,
         DQFLAGS["JUMP_DET"],

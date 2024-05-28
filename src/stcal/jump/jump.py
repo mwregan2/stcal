@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import time
 import warnings
-
+from astropy.io import fits
 import numpy as np
 import cv2 as cv
 import astropy.stats as stats
@@ -638,9 +638,15 @@ def flag_large_events(
                 gdq[intg, 1:last_grp_flagged, :, :] = np.bitwise_or(gdq[intg, 1:last_grp_flagged, :, :],
                                                                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :],
                                                                     last_grp_flagged - 1, axis=0))
-    sat_cores = np.bitwise_or(persist_jumps, axis=0)
-    test = 1
-    return gdq, total_snowballs, sat_cores
+
+    all_sat_cores = persist_jumps.copy()
+    fits.writeto("persist_jumps.fits", persist_jumps, overwrite=True)
+    all_sats = np.amax(persist_jumps, axis=0)
+    fits.writeto("sat_cores.fits", all_sats, overwrite=True)
+    print(np.max(all_sats))
+    print(np.max(all_sat_cores))
+    print(np.max(persist_jumps))
+    return gdq, total_snowballs, all_sats
 
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,
