@@ -645,7 +645,8 @@ def flag_large_events(
 
     all_sats = np.amax(persist_jumps, axis=0)
     fits.writeto(str(exp_stop)+"_snowball_cores.fits", all_sats, overwrite=True)
-    return gdq, total_snowballs, all_sats
+    new_gdq = flag_previous_saturation(gdq, exp_start)
+    return new_gdq, total_snowballs, all_sats
 
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,
@@ -1161,12 +1162,15 @@ def flag_previous_saturation(gdq, start_time_str):
     for file in all_files:
         file_time = np.datetime64(file.removesuffix('_snowball_cores.fits'))
         delta_time_min = np.timedelta64(file_time - start_time, 'm')
-        if delta_time_min > 0:
+        if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
-    index_of_close_file = np.argmin(delta_times)
-    saturation_mask = fits.getdata(good_files[index_of_close_file])
-    print("target start time:", start_time)
-    print("masking using ", good_files[index_of_close_file])
-    new_gdq = gdq + saturation_mask[np.newaxis, np.newaxis, :, :]
-    return new_gdq
+    if len(good_files) > 0:
+        index_of_close_file = np.argmin(delta_times)
+        saturation_mask = fits.getdata(good_files[index_of_close_file])
+        print("target start time:", start_time)
+        print("masking using ", good_files[index_of_close_file])
+        new_gdq = gdq + saturation_mask[np.newaxis, np.newaxis, :, :]
+        return new_gdq
+    else:
+        return gdq
