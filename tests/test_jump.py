@@ -548,11 +548,14 @@ def test_flag_persist_groups():
     gdq = fits.getdata("../../../notebooks/ingdq.fits")
     #    gdq = hdul['GROUPDQ'].data
     print(gdq.shape)
-
+    exp_start = np.datetime64('2024-05-25T03:30:00.000')
+    exp_end = np.datetime64('2024-05-25T04:30:00.000')
     total_snowballs = flag_large_events(
         gdq,
         DQFLAGS["JUMP_DET"],
         DQFLAGS["SATURATED"],
+        exp_start,
+        exp_end,
         min_sat_area=1,
         min_jump_area=6,
         expand_factor=1.9,

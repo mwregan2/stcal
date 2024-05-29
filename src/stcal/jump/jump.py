@@ -33,6 +33,8 @@ def detect_jumps(
     min_jump_to_flag_neighbors,
     flag_4_neighbors,
     dqflags,
+    start_time,
+    end_time,
     after_jump_flag_dn1=0.0,
     after_jump_flag_n1=0,
     after_jump_flag_dn2=0.0,
@@ -519,6 +521,8 @@ def flag_large_events(
     gdq,
     jump_flag,
     sat_flag,
+    exp_start,
+    exp_stop,
     min_sat_area=1,
     min_jump_area=6,
     expand_factor=2.0,
@@ -578,7 +582,7 @@ def flag_large_events(
 
     """
     log.info("Flagging Snowballs")
-
+    print(exp_stop)
     n_showers_grp = []
     total_snowballs = 0
     nints, ngrps, nrows, ncols = gdq.shape
@@ -639,13 +643,8 @@ def flag_large_events(
                                                                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :],
                                                                     last_grp_flagged - 1, axis=0))
 
-    all_sat_cores = persist_jumps.copy()
-    fits.writeto("persist_jumps.fits", persist_jumps, overwrite=True)
     all_sats = np.amax(persist_jumps, axis=0)
-    fits.writeto("sat_cores.fits", all_sats, overwrite=True)
-    print(np.max(all_sats))
-    print(np.max(all_sat_cores))
-    print(np.max(persist_jumps))
+    fits.writeto(str(exp_stop)+"_snowball_cores.fits", all_sats, overwrite=True)
     return gdq, total_snowballs, all_sats
 
 def extend_saturation(
