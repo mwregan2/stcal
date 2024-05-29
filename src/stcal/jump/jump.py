@@ -6,7 +6,7 @@ from astropy.io import fits
 import numpy as np
 import cv2 as cv
 import astropy.stats as stats
-
+from glob import glob
 from astropy.convolution import Ring2DKernel
 from astropy.convolution import convolve
 
@@ -1148,3 +1148,25 @@ def calc_num_slices(n_rows, max_cores, max_available):
         n_slices = max_available
     # Make sure we don't have more slices than rows or available cores.
     return min([n_rows, n_slices, max_available])
+
+def flag_previous_saturation(gdq, start_time_str):
+    start_time = np.datetime64(start_time_str)
+    today = np.datetime64(start_time, 'D')
+    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
+    today_files = glob(str(today)+"*")
+    yesterday_files = glob(str(yesterday)+"*")
+    all_files = yesterday_files + today_files
+    delta_times = []
+    good_files = []
+    for file in all_files:
+        file_time = np.datetime64(file.removesuffix('_snowball_cores.fits'))
+        delta_time_min = np.timedelta64(file_time - start_time, 'm')
+        if delta_time_min > 0:
+            delta_times.append(delta_time_min)
+            good_files.append(file)
+    index_of_close_file = np.argmin(delta_times)
+    saturation_mask = fits.getdata(good_files[index_of_close_file])
+    print("target start time:", start_time)
+    print("masking using ", good_files[index_of_close_file])
+    new_gdq = gdq + saturation_mask[np.newaxis, np.newaxis, :, :]
+    return new_gdq

@@ -10,7 +10,8 @@ from stcal.jump.jump import (
     point_inside_ellipse,
     find_first_good_group,
     detect_jumps,
-    find_last_grp
+    find_last_grp,
+    flag_previous_saturation
 )
 
 DQFLAGS = {"JUMP_DET": 4, "SATURATED": 2, "DO_NOT_USE": 1, "GOOD": 0, "NO_GAIN_VALUE": 8,
@@ -594,3 +595,12 @@ def test_find_last_grp():
     assert (find_last_grp(grp=5, ngrps=8, num_grps_masked=0) == 6)
     assert (find_last_grp(grp=5, ngrps=8, num_grps_masked=1) == 7)
     assert (find_last_grp(grp=5, ngrps=8, num_grps_masked=2) == 8)
+
+def test_flag_previous_saturation():
+    nints = 2
+    ngroups = 7
+    nrows = 2048
+    ncols = 2048
+    gdq = np.zeros(shape=(nints, ngroups, nrows, ncols), dtype=np.int32)
+    start_time = "2024-05-25T03:30:00.000"
+    flag_previous_saturation(gdq, start_time)
