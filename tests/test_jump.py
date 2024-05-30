@@ -602,5 +602,5 @@ def test_flag_previous_saturation():
     nrows = 2048
     ncols = 2048
     gdq = np.zeros(shape=(nints, ngroups, nrows, ncols), dtype=np.int32)
-    start_time = "2024-05-25T03:30:00.000"
+    start_time = "690398.40420020833"
     flag_previous_saturation(gdq, start_time)

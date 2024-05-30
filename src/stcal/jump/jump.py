@@ -231,6 +231,8 @@ def detect_jumps(
     pdq : int, 2D array
         updated pixel dq array
     """
+    print("delta time", end_time - start_time)
+    print("start time,", start_time)
     constants.update_dqflags(dqflags)  # populate dq flags
     sat_flag = dqflags["SATURATED"]
     jump_flag = dqflags["JUMP_DET"]
@@ -586,7 +588,6 @@ def flag_large_events(
 
     """
     log.info("Flagging Snowballs")
-    print(exp_stop)
     n_showers_grp = []
     total_snowballs = 0
     nints, ngrps, nrows, ncols = gdq.shape
@@ -649,8 +650,8 @@ def flag_large_events(
 
     all_sats = np.amax(persist_jumps, axis=0)
     fits.writeto(str(exp_stop)+"_snowball_cores.fits", all_sats, overwrite=True)
-    new_gdq = flag_previous_saturation(gdq, exp_start)
-    return new_gdq, total_snowballs, all_sats
+    new_gdq = flag_previous_saturation(gdq, str(exp_start))
+    return new_gdq, total_snowballs
 
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,
@@ -1154,18 +1155,20 @@ def calc_num_slices(n_rows, max_cores, max_available):
     # Make sure we don't have more slices than rows or available cores.
     return min([n_rows, n_slices, max_available])
 
-def flag_previous_saturation(gdq, start_time_str):
-    start_time = np.datetime64(start_time_str)
-    today = np.datetime64(start_time, 'D')
-    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
-    today_files = glob(str(today)+"*")
-    yesterday_files = glob(str(yesterday)+"*")
+def flag_previous_saturation(gdq, start_time):
+#    start_time = np.datetime64(start_time_str)
+
+#    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
+    today_search = str(round(float(start_time)))+"*"
+    today_files = glob(today_search+"*")
+    yesterday_search = str(round(float(start_time) - 1))+"*"
+    yesterday_files = glob(yesterday_search+"*")
     all_files = yesterday_files + today_files
     delta_times = []
     good_files = []
     for file in all_files:
-        file_time = np.datetime64(file.removesuffix('_snowball_cores.fits'))
-        delta_time_min = np.timedelta64(file_time - start_time, 'm')
+        file_time = float(file.removesuffix('_snowball_cores.fits'))
+        delta_time_min = (file_time - float(start_time)) * 1440.
         if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
