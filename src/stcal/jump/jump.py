@@ -1168,7 +1168,7 @@ def flag_previous_saturation(gdq, start_time):
     good_files = []
     for file in all_files:
         file_time = float(file.removesuffix('_snowball_cores.fits'))
-        delta_time_min = (file_time - float(start_time)) * 1440.
+        delta_time_min = (float(start_time) - file_time) * 1440.
         if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
