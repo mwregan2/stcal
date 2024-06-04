@@ -706,7 +706,7 @@ def extend_saturation(
             )
             persist_ellipse = persist_image[:, :, 2]
             persist_saty, persist_satx = np.where(persist_ellipse == 22)
-            persist_jumps[persist_saty, persist_satx] = jump_flag
+            persist_jumps[persist_saty, persist_satx] = sat_flag
     return outcube, persist_jumps
 
 
