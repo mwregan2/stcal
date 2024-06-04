@@ -1,6 +1,11 @@
 1.7.2 (unreleased)
 ==================
 
+General
+-------
+
+- build with Numpy 2.0 release candidate [#260]
+
 Changes to API
 --------------
 
@@ -8,7 +13,11 @@ Changes to API
 
 Bug Fixes
 ---------
-
+jump
+~~~~
+- Flag asymmetrical snowballs that are missed by the current code (JP-3638). The was changed to
+  not require that the center of the snowball jump ellipse contains a saturated
+  pixel. [#261]
 - 
 
 1.7.1 (2024-05-21)
