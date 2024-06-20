@@ -480,6 +480,7 @@ def detect_jumps(
                 sat_flag,
                 start_time,
                 end_time,
+                detector_name,
                 min_sat_area=min_sat_area,
                 min_jump_area=min_jump_area,
                 expand_factor=expand_factor,
