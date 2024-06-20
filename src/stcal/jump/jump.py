@@ -662,7 +662,7 @@ def flag_large_events(
 
     all_sats = np.amax(persist_jumps, axis=0)
     fits.writeto(str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", all_sats, overwrite=True)
-    new_gdq = flag_previous_saturation(gdq, str(exp_start))
+    new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name)
     return new_gdq, total_snowballs
 
 def extend_saturation(
