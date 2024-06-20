@@ -35,6 +35,7 @@ def detect_jumps(
     dqflags,
     start_time,
     end_time,
+    detector_name,
     after_jump_flag_dn1=0.0,
     after_jump_flag_n1=0,
     after_jump_flag_dn2=0.0,
@@ -233,6 +234,7 @@ def detect_jumps(
     """
     print("delta time", end_time - start_time)
     print("start time,", start_time)
+    print(detector_name)
     constants.update_dqflags(dqflags)  # populate dq flags
     sat_flag = dqflags["SATURATED"]
     jump_flag = dqflags["JUMP_DET"]
@@ -310,6 +312,7 @@ def detect_jumps(
                 sat_flag,
                 start_time,
                 end_time,
+                detector_name,
                 min_sat_area=min_sat_area,
                 min_jump_area=min_jump_area,
                 expand_factor=expand_factor,
@@ -529,6 +532,7 @@ def flag_large_events(
     sat_flag,
     exp_start,
     exp_stop,
+    detector_name,
     min_sat_area=1,
     min_jump_area=6,
     expand_factor=2.0,
@@ -656,7 +660,7 @@ def flag_large_events(
                                                                     last_grp_flagged - 1, axis=0))
 
     all_sats = np.amax(persist_jumps, axis=0)
-    fits.writeto(str(exp_stop)+"_snowball_cores.fits", all_sats, overwrite=True)
+    fits.writeto(str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", all_sats, overwrite=True)
     new_gdq = flag_previous_saturation(gdq, str(exp_start))
     return new_gdq, total_snowballs
 
@@ -1153,14 +1157,14 @@ def calc_num_slices(n_rows, max_cores, max_available):
     # Make sure we don't have more slices than rows or available cores.
     return min([n_rows, n_slices, max_available])
 
-def flag_previous_saturation(gdq, start_time):
+def flag_previous_saturation(gdq, start_time, detector_name):
 #    start_time = np.datetime64(start_time_str)
 
 #    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
-    today_search = str(round(float(start_time)))+"*"
-    today_files = glob(today_search+"*")
-    yesterday_search = str(round(float(start_time) - 1))+"*"
-    yesterday_files = glob(yesterday_search+"*")
+    today_search = str(round(float(start_time))) + "_" + detector_name
+    today_files = glob(today_search + "*")
+    yesterday_search = str(round(float(start_time) - 1)) + "_" + detector_name
+    yesterday_files = glob(yesterday_search + "*")
     all_files = yesterday_files + today_files
     delta_times = []
     good_files = []
