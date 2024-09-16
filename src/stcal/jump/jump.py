@@ -234,7 +234,8 @@ def detect_jumps(
     """
     print("delta time", end_time - start_time)
     print("start time,", start_time)
-    print(detector_name)
+    print("detector name", detector_name)
+    print("Entry minimum sigma clipping groups", minimum_sigclip_groups)
     constants.update_dqflags(dqflags)  # populate dq flags
     sat_flag = dqflags["SATURATED"]
     jump_flag = dqflags["JUMP_DET"]
@@ -661,9 +662,10 @@ def flag_large_events(
                                                                     last_grp_flagged - 1, axis=0))
 
     all_sats = np.amax(persist_jumps, axis=0)
-    fits.writeto(str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", all_sats, overwrite=True)
-    new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name)
-    return new_gdq, total_snowballs
+#    fits.writeto(str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", all_sats, overwrite=True)
+#    new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name)
+#    return new_gdq, total_snowballs
+    return gdq, total_snowballs
 
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,

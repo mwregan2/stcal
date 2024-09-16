@@ -197,6 +197,9 @@ def find_crs(
         ratio_all = np.abs(first_diffs - median_diffs[np.newaxis, np.newaxis, :, :]) / \
                     sigma[np.newaxis, np.newaxis, :, :]
         # Test to see if there are enough groups to use sigma clipping
+        print("total number of groups: {}".format(total_groups))
+        print("only use ints: {}".format(only_use_ints))
+        print("minimum sigclip groups: {}".format(total_sigclip_groups))
         if (only_use_ints and nints >= minimum_sigclip_groups) or \
            (not only_use_ints and total_groups >= minimum_sigclip_groups):
             log.info(" Jump Step using sigma clip {} greater than {}, rejection threshold {}".format(
@@ -423,6 +426,8 @@ def find_crs(
     # the transient seen after ramp jumps
     flag_e_threshold = [after_jump_flag_e1, after_jump_flag_e2]
     flag_groups = [after_jump_flag_n1, after_jump_flag_n2]
+    print("flag e threshold: ", flag_e_threshold)
+    print("flag groups: ", flag_groups)
     for cthres, cgroup in zip(flag_e_threshold, flag_groups):
         if cgroup > 0:
             cr_intg, cr_group, cr_row, cr_col = np.where(np.bitwise_and(gdq, jump_flag))
