@@ -128,6 +128,8 @@ def find_crs(
         pixels above current row also to be flagged as a CR
 
     """
+    print("after jump flag e1 and e2", after_jump_flag_e1, after_jump_flag_e2)
+    print("after jump flag n1 and n2", after_jump_flag_n1, after_jump_flag_n2)
     # copy data and group DQ array
     if copy_arrs:
         dat = dataa.copy()
