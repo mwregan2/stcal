@@ -997,7 +997,7 @@ def find_faint_extended(
     else:
         median_diffs = np.nanmedian(first_diffs_masked, axis=(0, 1))
         sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
-
+    extented_emission_cube = np.zeros_like(data, dtype=float)
     for intg in range(nints):
         # calculate sigma for each pixel
         if nints < minimum_sigclip_groups:
