@@ -1107,6 +1107,7 @@ def find_faint_extended(
                 all_ellipses.append([intg, grp, ellipses])
                 # Reset the warnings filter to its original state
     warnings.resetwarnings()
+    fits.writeto('extended_emission.fits', extended_emission)
     total_showers = 0
 
     if all_ellipses:
