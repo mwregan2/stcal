@@ -997,7 +997,7 @@ def find_faint_extended(
     else:
         median_diffs = np.nanmedian(first_diffs_masked, axis=(0, 1))
         sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
-    extented_emission_cube = np.zeros_like(data, dtype=float)
+    extended_emission_cube = np.zeros_like(data, dtype=float)
     for intg in range(nints):
         # calculate sigma for each pixel
         if nints < minimum_sigclip_groups:
@@ -1053,7 +1053,7 @@ def find_faint_extended(
             extended_emission = np.zeros(shape=(nrows, ncols), dtype=np.uint8)
             exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
             extended_emission[exty, extx] = 1
-            extented_emission_cube[intg, grp, :, :] = extended_emission
+            extended_emission_cube[intg, grp, :, :] = extended_emission
             #  find the contours of the extended emission
             contours, hierarchy = cv.findContours(extended_emission, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
             #  get the contours that are above the minimum size
@@ -1107,7 +1107,7 @@ def find_faint_extended(
                 all_ellipses.append([intg, grp, ellipses])
                 # Reset the warnings filter to its original state
     warnings.resetwarnings()
-    fits.writeto('extended_emission.fits', extended_emission)
+    fits.writeto('extended_emission.fits', extended_emission_cube, overwrite=True)
     total_showers = 0
 
     if all_ellipses:
