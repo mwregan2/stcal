@@ -968,6 +968,7 @@ def find_faint_extended(
     nints = data.shape[0]
     ngrps = data.shape[1]
     num_grps_donotuse = 0
+    fits.writeto("ïnputdqcube.fits", gdq, overwrite=True)
     for integ in range(nints):
         for grp in range(ngrps):
             if np.all(np.bitwise_and(gdq[integ, grp, :, :], donotuse_flag)):
@@ -997,7 +998,8 @@ def find_faint_extended(
     else:
         median_diffs = np.nanmedian(first_diffs_masked, axis=(0, 1))
         sigma = np.sqrt(np.abs(median_diffs) + read_noise_2 / nframes)
-    extended_emission_cube = np.zeros_like(data, dtype=float)
+    masked_smoothed_ratio_cube = np.zeros_like(data, dtype=float)
+    masked_ratio_cube = np.zeros_like(data, dtype=float)
     for intg in range(nints):
         # calculate sigma for each pixel
         if nints < minimum_sigclip_groups:
@@ -1044,16 +1046,18 @@ def find_faint_extended(
             dnu_pixels_array = np.bitwise_and(combined_pixel_mask, 1)
             dnuy, dnux = np.where(dnu_pixels_array == 1)
             masked_ratio[dnuy, dnux] = np.nan
-
+            masked_ratio_cube[intg, grp, :, :] = masked_ratio
             masked_smoothed_ratio = convolve(masked_ratio.filled(np.nan), ring_2D_kernel)
             #  mask out the pixels that got refilled by the convolution
             masked_smoothed_ratio[dnuy, dnux] = np.nan
+#            masked_smoothed_ratio[saty, satx] = np.nan
+#            masked_smoothed_ratio[jumpy, jumpx] = np.nan
             nrows = ratio.shape[1]
             ncols = ratio.shape[2]
             extended_emission = np.zeros(shape=(nrows, ncols), dtype=np.uint8)
             exty, extx = np.where(masked_smoothed_ratio > snr_threshold)
             extended_emission[exty, extx] = 1
-            extended_emission_cube[intg, grp, :, :] = masked_smoothed_ratio
+            masked_smoothed_ratio_cube[intg, grp, :, :] = masked_smoothed_ratio
             #  find the contours of the extended emission
             contours, hierarchy = cv.findContours(extended_emission, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
             #  get the contours that are above the minimum size
@@ -1107,7 +1111,8 @@ def find_faint_extended(
                 all_ellipses.append([intg, grp, ellipses])
                 # Reset the warnings filter to its original state
     warnings.resetwarnings()
-    fits.writeto('extended_emission.fits', extended_emission_cube, overwrite=True)
+    fits.writeto('masked_smoothed_ratio_cube.fits', masked_smoothed_ratio_cube, overwrite=True)
+    fits.writeto('masked_ratio_cube.fits', masked_ratio_cube, overwrite=True)
     total_showers = 0
 
     if all_ellipses:
