@@ -1173,7 +1173,7 @@ def flag_previous_saturation(gdq, start_time, detector_name):
 
 #    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
     print("start time ", start_time)
-    today_search = str(round(float(start_time))) + "_" + detector_name
+    today_search = str(round(float(start_time))) + "*" + detector_name + "*"
     print(today_search)
     today_files = glob(today_search + "*")
     print(today_files)
@@ -1186,7 +1186,7 @@ def flag_previous_saturation(gdq, start_time, detector_name):
     good_files = []
     print("number of files: ", len(all_files))
     for file in all_files:
-        file_time = float(file.removesuffix('_snowball_cores.fits'))
+        file_time = float(file.removesuffix('_' + detector_name+ '_snowball_cores.fits'))
         print(file_time)
         delta_time_min = (float(start_time) - file_time) * 1440.
         print("delta time min ", delta_time_min)
