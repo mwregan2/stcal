@@ -233,6 +233,7 @@ def detect_jumps(
         updated pixel dq array
     """
     print("delta time", end_time - start_time)
+    print("end time,", end_time)
     print("start time,", start_time)
     print("detector name", detector_name)
     print("Entry minimum sigma clipping groups", minimum_sigclip_groups)
