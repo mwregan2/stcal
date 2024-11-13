@@ -1174,9 +1174,11 @@ def flag_previous_saturation(gdq, start_time, detector_name):
 #    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
     print("start time ", start_time)
     today_search = str(round(float(start_time))) + "_" + detector_name
+    print(today_search)
     today_files = glob(today_search + "*")
     print(today_files)
     yesterday_search = str(round(float(start_time) - 1)) + "_" + detector_name
+    print(yesterday_search)
     yesterday_files = glob(yesterday_search + "*")
     print(yesterday_files)
     all_files = yesterday_files + today_files
