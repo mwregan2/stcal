@@ -665,7 +665,7 @@ def flag_large_events(
     all_sats = np.amax(persist_jumps, axis=0)
     print("Writing snowball cores")
     fits.writeto(str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", all_sats, overwrite=True)
-    new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name)
+    new_gdq = flag_previous_saturation(gdq, str(exp_start), str(exp_stop), detector_name)
     return new_gdq, total_snowballs
 #    return gdq, total_snowballs
 
@@ -1168,11 +1168,12 @@ def calc_num_slices(n_rows, max_cores, max_available):
     # Make sure we don't have more slices than rows or available cores.
     return min([n_rows, n_slices, max_available])
 
-def flag_previous_saturation(gdq, start_time, detector_name):
+def flag_previous_saturation(gdq, start_time, end_time, detector_name):
 #    start_time = np.datetime64(start_time_str)
 
 #    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
     print("start time ", start_time)
+    print("end time ", end_time)
     today_search = str(round(float(start_time))) + "*" + detector_name + "*"
     print(today_search)
     today_files = glob(today_search + "*")
@@ -1181,7 +1182,7 @@ def flag_previous_saturation(gdq, start_time, detector_name):
     print(yesterday_search)
     yesterday_files = glob(yesterday_search + "*")
     print(yesterday_files)
-    all_files = yesterday_files + today_files
+    all_files = (yesterday_files + today_files)
     delta_times = []
     good_files = []
     print("number of files: ", len(all_files))
@@ -1193,11 +1194,12 @@ def flag_previous_saturation(gdq, start_time, detector_name):
         if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
+        print(delta_times)
     if len(good_files) > 0:
-        index_of_close_file = np.argmin(delta_times)
-        saturation_mask = fits.getdata(good_files[index_of_close_file])
+        index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
+        saturation_mask = fits.getdata(good_files[index_of_closest_file])
         print("target start time:", start_time)
-        print("masking using ", good_files[index_of_close_file])
+        print("masking using ", good_files[index_of_closest_file])
         new_gdq = gdq + saturation_mask[np.newaxis, np.newaxis, :, :]
         return new_gdq
     else:
