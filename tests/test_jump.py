@@ -11,7 +11,8 @@ from stcal.jump.jump import (
     find_first_good_group,
     detect_jumps,
     find_last_grp,
-    flag_previous_saturation
+    flag_previous_saturation,
+    flag_sat_in_exposure
 )
 
 DQFLAGS = {"JUMP_DET": 4, "SATURATED": 2, "DO_NOT_USE": 1, "GOOD": 0, "NO_GAIN_VALUE": 8,
@@ -547,6 +548,35 @@ def test_inside_ellipes5():
     ellipse = ((1111.0001220703125, 870.5000610351562), (10.60660171508789, 10.60660171508789), 45.0)
     result = point_inside_ellipse(point, ellipse)
     assert result
+
+def test_flag_sat_in_exposure():
+    nint, ngrps, ncols, nrows = 3, 5, 3, 3
+    gdq = np.zeros(shape=(nint, ngrps, nrows, ncols), dtype=np.uint32)
+    gdq[0, 1:, 0, 1] = 1  # not saturation
+    gdq[0, 1:, 1, 1] = 2  # saturation in 1st group of first int
+    gdq[1, 1:, 2, 2] = 2  # saturation in the 1st group of the second int
+    print("")
+    print("first int input", gdq[0, :, :, :])
+    print("2nd int input", gdq[1, :, :, :])
+    print("3rd int input", gdq[2, :, :, :])
+
+    start_sat, outgdq = flag_sat_in_exposure(gdq, DQFLAGS['SATURATED'])
+    print("outgdq shape", outgdq.shape)
+    print("first int ouput", outgdq[0, :, :])
+    print("2nd int output", outgdq[1, :, :])
+    print("3rd int output", outgdq[2, :, :])
+    fits.writeto('outgdq.fits', outgdq, overwrite=True)
+    fits.writeto('start_sat.fits', start_sat, overwrite=True)
+#    print(outgdq[1, :, 1, 1])
+    assert outgdq[0, 0, 1, 1] == 0
+    assert outgdq[1, 0, 2, 2] == 0
+    assert outgdq[1, 0, 1, 1] == 2
+    assert outgdq[2, 0, 2, 2] == 2
+    assert outgdq[2, 0, 1, 1] == 2
+    sat_pixels = np.logical_and(outgdq, DQFLAGS['SATURATED'])
+    print(sat_pixels.shape)
+    fits.writeto('satpix.fits', sat_pixels.astype(int), overwrite=True)
+    fits.writeto('outgdq.fits', outgdq.astype(int), overwrite=True)
 
 #@pytest.mark.skip(" used for local testing")
 def test_flag_persist_groups():
