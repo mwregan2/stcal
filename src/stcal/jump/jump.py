@@ -612,7 +612,7 @@ def flag_large_events(
     persist_jumps = np.zeros(shape=(nints, in_gdq.shape[2], in_gdq.shape[3]), dtype=np.uint32)
 #    fits.writeto("ïnputdqcube.fits", in_gdq, overwrite=True)
     if mask_persist_grps_next_int:
-        saturated_pixels_persistance, gdq = flag_sat_in_exposure(in_gdq, sat_flag)
+        last_grp_sat, gdq = flag_sat_in_exposure(in_gdq, sat_flag)
 #        fits.writeto('updated_gdq.fits', gdq.astype(int), overwrite=True)
 #        fits.writeto("saturated_pixels_persistance.fits", saturated_pixels_persistance.astype(int), overwrite=True)
     else:
@@ -686,8 +686,9 @@ def flag_large_events(
 #    fits.writeto("persist_jumps.fits", np.amax(persist_jumps, axis=0), overwrite=True)
     if write_saturated_cores:
         print("Writing snowball cores")
-        out_flagged_jumps = np.logical_or(np.amax(persist_jumps, axis=0), saturated_pixels_persistance[-1, :, :]) * sat_flag
-        print('out_flagged_jumps shape', out_flagged_jumps.shape)
+        out_flagged_jumps = np.logical_or(np.amax(persist_jumps, axis=0), last_grp_sat) * sat_flag
+#        fits.writeto("out_flagged_jumps.fits", out_flagged_jumps, overwrite=True)
+#        fits.writeto('last_grp_sat.fits', last_grp_sat, overwrite=True)
         saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=5)
  #       saturation_mask = out_flagged_jumps
         fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", saturation_mask, overwrite=True)
@@ -695,7 +696,7 @@ def flag_large_events(
 #        fits.writeto("final_new_gdq.fits", new_gdq.astype(int), overwrite=True)
         return new_gdq, total_snowballs
     else:
-        print("Not writing snowball cores")
+        print("Not writing saturated pixels")
         return gdq, total_snowballs
 
 #    return gdq, total_snowballs
@@ -1255,14 +1256,14 @@ def flag_sat_in_exposure(in_gdq, sat_flag):
     start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
     last_grp_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
     for intg in range(nints):
-        last_grp_sat[intg, :, :] = np.bitwise_and(out_gdq[intg, ngrps - 1, :, :], sat_flag)
+        last_grp_sat[intg, :, :] = np.bitwise_and(out_gdq[intg, -1, :, :], sat_flag)
         if intg > 0:
             start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
         out_gdq[intg:, :, :, :] = np.bitwise_or(out_gdq[intg:, :, :, :], start_sat[intg, np.newaxis, :, :])
 #    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
 #    fits.writeto("start_sat.fits", start_sat, overwrite=True)
 #    fits.writeto("exposure_out_gdq.fits", out_gdq.astype(int), overwrite=True)
-    return start_sat, out_gdq
+    return last_grp_sat[-1, :, :], out_gdq
 
 
 def shrink_single_pixel_sat(inmask, num_pixels_flagged=5):
