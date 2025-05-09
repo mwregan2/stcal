@@ -481,6 +481,7 @@ def detect_jumps(
         gdq[gdq == np.bitwise_or(dqflags['SATURATED'], dqflags['JUMP_DET'])] = \
             dqflags['SATURATED']
 
+        new_gdq = gdq.copy()  #in case neither snowballs or showers are turned on
         #  This is the flag that controls the flagging of snowballs.
         if expand_large_events:
             new_gdq, total_snowballs = flag_large_events(
@@ -503,6 +504,7 @@ def detect_jumps(
                 fits_loc=fits_loc,
                 write_saturated_cores=write_saturated_cores,
             )
+#            fits.writeto("after_flag_large.fits", new_gdq, overwrite=True)
             log.info("Total snowballs = %i", total_snowballs)
             number_extended_events = total_snowballs
         if find_showers:
@@ -534,8 +536,8 @@ def detect_jumps(
     data /= gain_2d
     err /= gain_2d
     readnoise_2d /= gain_2d
- #   fits.writeto("new_gdq.fits", new_gdq, overwrite=True)
     # Return the updated data quality arrays
+#    fits.writeto("before_return_gdq.fits", new_gdq, overwrite=True)
     return new_gdq, pdq, total_primary_crs, number_extended_events, stddev
 
 
@@ -606,6 +608,8 @@ def flag_large_events(
     total Snowballs
 
     """
+    print("incoming edge_size %i pixels" % edge_size)
+    print("incombe min_jump_area %i pixels" % min_jump_area)
     n_showers_grp = []
     total_snowballs = 0
     nints, ngrps, nrows, ncols = in_gdq.shape
@@ -683,20 +687,21 @@ def flag_large_events(
     #  in the cores of snowballs.
 
 #    all_sats = np.amax(persist_pixels)
-#    fits.writeto("persist_jumps.fits", np.amax(persist_jumps, axis=0), overwrite=True)
+ #   fits.writeto("persist_jumps.fits", np.amax(persist_jumps, axis=0), overwrite=True)
     if write_saturated_cores:
-        print("Writing snowball cores")
+        log.info("Writing snowball cores")
         out_flagged_jumps = np.logical_or(np.amax(persist_jumps, axis=0), last_grp_sat) * sat_flag
 #        fits.writeto("out_flagged_jumps.fits", out_flagged_jumps, overwrite=True)
 #        fits.writeto('last_grp_sat.fits', last_grp_sat, overwrite=True)
-        saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=5)
+        saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=1)
  #       saturation_mask = out_flagged_jumps
-        fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_snowball_cores.fits", saturation_mask, overwrite=True)
-        new_gdq = flag_previous_saturation(gdq, str(exp_start), str(exp_stop), detector_name, fits_loc)
-#        fits.writeto("final_new_gdq.fits", new_gdq.astype(int), overwrite=True)
+        fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_saturated_cores.fits",
+                     saturation_mask, overwrite=True)
+        new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name, fits_loc)
+ #       fits.writeto("final_new_gdq.fits", new_gdq.astype(int), overwrite=True)
         return new_gdq, total_snowballs
     else:
-        print("Not writing saturated pixels")
+ #       print("Not writing saturated pixels")
         return gdq, total_snowballs
 
 #    return gdq, total_snowballs
@@ -1198,12 +1203,10 @@ def calc_num_slices(n_rows, max_cores, max_available):
     return min([n_rows, n_slices, max_available])
 
 
-def flag_previous_saturation(in_gdq, start_time, end_time, detector_name, fits_loc):
+def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
 #    start_time = np.datetime64(start_time_str)
-
+#    fits.writeto("in_gdq.fits", in_gdq, overwrite=True)
 #    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
-    print("start time ", start_time)
-    print("end time ", end_time)
     today_search = fits_loc + str(round(float(start_time))) + "*" + detector_name + "*"
     print(today_search)
     today_files = glob(today_search + "*")
@@ -1218,7 +1221,7 @@ def flag_previous_saturation(in_gdq, start_time, end_time, detector_name, fits_l
     print("number of files: ", len(all_files))
     for full_file in all_files:
         file = full_file.removeprefix(fits_loc)
-        file_time = float(file.removesuffix('_' + detector_name + '_snowball_cores.fits'))
+        file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
         print("file time ", file_time)
         delta_time_min = (float(start_time) - file_time) * 1440.
         print("delta time min ", delta_time_min)
@@ -1226,6 +1229,7 @@ def flag_previous_saturation(in_gdq, start_time, end_time, detector_name, fits_l
             delta_times.append(delta_time_min)
             good_files.append(file)
         print("delta times", delta_times)
+        print("good_files", good_files)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
 #        print("good files array values: ", good_files[index_of_closest_file])
@@ -1246,11 +1250,14 @@ def flag_previous_saturation(in_gdq, start_time, end_time, detector_name, fits_l
 #        fits.writeto("outgoing_gdq.fits", new_gdq, overwrite=True)
         return new_gdq
     else:
+#        fits.writeto("out_gdq_prev_sat.fits", in_gdq, overwrite=True)
         return in_gdq
 
 
 def flag_sat_in_exposure(in_gdq, sat_flag):
-    #  find the saturated pixels at the end of each integration and add them to the next integration
+    #  Find the saturated pixels at the end of each integration and or them to all groups in the next integration
+    #  Note that this causes saturation to extend to all subsequent integrations.
+    #  Optimal implementation should have more flexibility
     nints, ngrps, nrows, ncols = in_gdq.shape
     out_gdq = in_gdq.copy()
     start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
@@ -1266,18 +1273,17 @@ def flag_sat_in_exposure(in_gdq, sat_flag):
     return last_grp_sat[-1, :, :], out_gdq
 
 
-def shrink_single_pixel_sat(inmask, num_pixels_flagged=5):
+def shrink_single_pixel_sat(inmask, num_pixels_flagged=1):
     outmask = inmask.copy()
-    target = np.ones(shape=(5,5), dtype=np.uint32) * 2
+    target = np.ones(shape=(5, 5), dtype=np.uint32) * 2
     target[0, :] = 0
     target[:, 0] = 0
     target[4, :] = 0
     target[:, 4] = 0
-    print("num pixels flagged: ", num_pixels_flagged)
     for y in range(2, 2046):
         for x in range(2, 2046):
             if np.array_equal(target, inmask[y-2:y+3, x-2:x+3]):
-                if num_pixels_flagged == 9:
+                if num_pixels_flagged == 1:
                     outmask[y-2:y+3, x-1] = 0
                     outmask[y-2:y+3, x+1] = 0
                     outmask[y-1, x-2:x+3] = 0
@@ -1287,5 +1293,4 @@ def shrink_single_pixel_sat(inmask, num_pixels_flagged=5):
                     outmask[y - 1, x + 1] = 0
                     outmask[y + 1, x - 1] = 0
                     outmask[y + 1, x + 1] = 0
-
     return outmask
