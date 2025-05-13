@@ -609,7 +609,7 @@ def flag_large_events(
 
     """
     print("incoming edge_size %i pixels" % edge_size)
-    print("incombe min_jump_area %i pixels" % min_jump_area)
+    print("incoming min_jump_area %i pixels" % min_jump_area)
     n_showers_grp = []
     total_snowballs = 0
     nints, ngrps, nrows, ncols = in_gdq.shape
@@ -886,6 +886,8 @@ def make_snowballs(
     # This routine will create a list of snowballs (ellipses) that have the
     # center
     # of the saturation circle within the enclosing jump rectangle.
+    print("low threshold", low_threshold)
+    print("high threshold", high_threshold)
     snowballs = []
     num_groups = gdq.shape[1]
     for jump in jump_ellipses:
@@ -1204,9 +1206,6 @@ def calc_num_slices(n_rows, max_cores, max_available):
 
 
 def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
-#    start_time = np.datetime64(start_time_str)
-#    fits.writeto("in_gdq.fits", in_gdq, overwrite=True)
-#    yesterday = np.datetime64(start_time - np.timedelta64(1, 'D'), 'D')
     today_search = fits_loc + str(round(float(start_time))) + "*" + detector_name + "*"
     print(today_search)
     today_files = glob(today_search + "*")
@@ -1218,39 +1217,20 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
     all_files = (yesterday_files + today_files)
     delta_times = []
     good_files = []
-    print("number of files: ", len(all_files))
     for full_file in all_files:
         file = full_file.removeprefix(fits_loc)
         file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
-        print("file time ", file_time)
         delta_time_min = (float(start_time) - file_time) * 1440.
-        print("delta time min ", delta_time_min)
         if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
-        print("delta times", delta_times)
-        print("good_files", good_files)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
-#        print("good files array values: ", good_files[index_of_closest_file])
         saturation_mask = fits.getdata(fits_loc + good_files[index_of_closest_file])
-#        saturation_mask = shrink_single_pixel_sat(full_mask)
-#        fits.writeto('updated_saturation_mask.fits', saturation_mask, overwrite=True)
-#       print("saturation mask shape", saturation_mask.shape)
-#        print("target start time:", start_time)
-#        print("masking using ", good_files[index_of_closest_file])
-#        fits.writeto("incoming_gdq.fits", in_gdq, overwrite=True)
-#        fits.writeto("incoming_prev_sat_mask.fits", saturation_mask, overwrite=True)
-#        new_gdq = np.bitwise_or(in_gdq, saturation_mask[np.newaxis, np.newaxis, :, :])
-#############
-#        Version where only the first int is flagged in the next flag_sat_in_exposure
-###############
         new_gdq = in_gdq.copy()
         new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
-#        fits.writeto("outgoing_gdq.fits", new_gdq, overwrite=True)
         return new_gdq
     else:
-#        fits.writeto("out_gdq_prev_sat.fits", in_gdq, overwrite=True)
         return in_gdq
 
 
