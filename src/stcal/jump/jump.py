@@ -235,12 +235,6 @@ def detect_jumps(
         updated pixel dq array
     """
     fits_loc = dir_name + '/'
-    print("delta time", end_time - start_time)
-    print("end time,", end_time)
-    print("start time,", start_time)
-    print("detector name", detector_name)
-    print("Entry minimum sigma clipping groups", minimum_sigclip_groups)
-    print("output file location", fits_loc)
     constants.update_dqflags(dqflags)  # populate dq flags
     sat_flag = dqflags["SATURATED"]
     jump_flag = dqflags["JUMP_DET"]
@@ -608,8 +602,6 @@ def flag_large_events(
     total Snowballs
 
     """
-    print("incoming edge_size %i pixels" % edge_size)
-    print("incoming min_jump_area %i pixels" % min_jump_area)
     n_showers_grp = []
     total_snowballs = 0
     nints, ngrps, nrows, ncols = in_gdq.shape
@@ -694,18 +686,12 @@ def flag_large_events(
 #        fits.writeto("out_flagged_jumps.fits", out_flagged_jumps, overwrite=True)
 #        fits.writeto('last_grp_sat.fits', last_grp_sat, overwrite=True)
         saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=1)
- #       saturation_mask = out_flagged_jumps
         fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_saturated_cores.fits",
                      saturation_mask, overwrite=True)
         new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name, fits_loc)
- #       fits.writeto("final_new_gdq.fits", new_gdq.astype(int), overwrite=True)
         return new_gdq, total_snowballs
     else:
- #       print("Not writing saturated pixels")
         return gdq, total_snowballs
-
-#    return gdq, total_snowballs
-
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,
     expansion=2, max_extended_radius=200
@@ -886,8 +872,6 @@ def make_snowballs(
     # This routine will create a list of snowballs (ellipses) that have the
     # center
     # of the saturation circle within the enclosing jump rectangle.
-    print("low threshold", low_threshold)
-    print("high threshold", high_threshold)
     snowballs = []
     num_groups = gdq.shape[1]
     for jump in jump_ellipses:
@@ -1207,13 +1191,9 @@ def calc_num_slices(n_rows, max_cores, max_available):
 
 def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
     today_search = fits_loc + str(round(float(start_time))) + "*" + detector_name + "*"
-    print(today_search)
     today_files = glob(today_search + "*")
-    print(today_files)
     yesterday_search = fits_loc + str(round(float(start_time) - 1)) + "*" + detector_name + "*"
-    print(yesterday_search)
     yesterday_files = glob(yesterday_search + "*")
-    print(yesterday_files)
     all_files = (yesterday_files + today_files)
     delta_times = []
     good_files = []
