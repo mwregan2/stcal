@@ -581,7 +581,7 @@ def test_flag_sat_in_exposure():
 #@pytest.mark.skip(" used for local testing")
 def test_flag_persist_groups():
     #   gdq = fits.getdata("persistgdq.fits")
-    gdq = fits.getdata("../../../notebooks/ingdq.fits")
+    gdq = fits.getdata("../../../notebooks/gdq_before_snowball.fits")
     #    gdq = hdul['GROUPDQ'].data
     print(gdq.shape)
     exp_start = np.datetime64('2024-05-25T03:30:00.000')
@@ -592,15 +592,19 @@ def test_flag_persist_groups():
         DQFLAGS["SATURATED"],
         exp_start,
         exp_end,
-        min_sat_area=1,
-        min_jump_area=6,
+        'NRS1',
+        min_sat_area=.5,
+        min_jump_area=20,
         expand_factor=1.9,
         edge_size=0,
         sat_required_snowball=True,
         min_sat_radius_extend=2.5,
-        sat_expand=1.1,
+        sat_expand=2,
         mask_persist_grps_next_int=True,
         persist_grps_flagged=0)
+
+def test_sat_inside_ellipse():
+    region = [[0, 0, 1, 0, 0], [0, 1, 1, 1, 0], [0, 0, 1, 1, 0], [0, 0, 1, 1, 0]]
 
 def test_calc_num_slices():
     n_rows = 20

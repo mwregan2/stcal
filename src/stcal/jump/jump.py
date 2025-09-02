@@ -12,7 +12,7 @@ from astropy.convolution import convolve
 
 from . import constants
 from . import twopoint_difference as twopt
-
+import sys
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
@@ -565,7 +565,7 @@ def flag_large_events(
 
     Parameters
     ----------
-    gdq : int, 4D array
+    in_gdq : int, 4D array
         Group dq array
     jump_flag : int
         DQ flag for jump detection.
@@ -606,21 +606,25 @@ def flag_large_events(
     total_snowballs = 0
     nints, ngrps, nrows, ncols = in_gdq.shape
     persist_jumps = np.zeros(shape=(nints, in_gdq.shape[2], in_gdq.shape[3]), dtype=np.uint32)
-#    fits.writeto("ïnputdqcube.fits", in_gdq, overwrite=True)
-    if mask_persist_grps_next_int:
-        last_grp_sat, gdq = flag_sat_in_exposure(in_gdq, sat_flag)
-#        fits.writeto('updated_gdq.fits', gdq.astype(int), overwrite=True)
-#        fits.writeto("saturated_pixels_persistance.fits", saturated_pixels_persistance.astype(int), overwrite=True)
-    else:
-        gdq = in_gdq
-        saturated_pixels_persistance = in_gdq
-
-#    fits.writeto("sat_gdq.fits", sat_gdq.astype(int), overwrite=True)
-#    saturated_pixels = np.bitwise_and(sat_gdq[:, :, :], sat_flag)
-
-#    sat_masked_dq = np.bitwise_or(sat_gdq[:, np.newaxis, :, :], gdq)
-#    fits.writeto("Masked_dq.fits", sat_masked_dq.astype(int), overwrite=True)
-
+    mask_persist_grps_next_int = True
+    write_saturated_cores = True
+#    if mask_persist_grps_next_int:
+#        last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
+#        fits.writeto('updated_gdq.fits', gdq2.astype(int), overwrite=True)
+#    else:
+#        gdq2 = in_gdq
+ #   if write_saturated_cores:
+ #       log.info("Writing snowball cores")
+ #       fits.writeto('before_prev_saturation.fits', gdq2, overwrite=True)
+ #       last_grp_sat = (np.bitwise_and(gdq2[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+ #       fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_saturated_cores.fits",
+ #                    last_grp_sat, overwrite=True)
+        # If the saturation mask exists, read the saturation mask and update the gdq
+ #       gdq = flag_previous_saturation(gdq2, str(exp_start), detector_name, fits_loc)
+ #       fits.writeto('after_prev_saturation.fits', gdq, overwrite=True)
+ #   else:
+    gdq = in_gdq
+    fits.writeto("gdq_before_snowball.fits", gdq, overwrite=True)
     for integration in range(nints):
         log.info("Flagging snowballs in integration %i out of %i", integration + 1, nints)
         for group in range(1, ngrps):
@@ -630,15 +634,17 @@ def flag_large_events(
             prev_sat = np.bitwise_and(prev_gdq, sat_flag)
             not_prev_sat = np.logical_not(prev_sat)
             new_sat = current_sat * not_prev_sat
+            if (group == 26 and integration == 0):
+                fits.writeto("new_sat_0_26.fits", new_sat, overwrite=True)
             if group < ngrps - 1:
                 next_gdq = gdq[integration, group + 1, :, :]
                 next_sat = np.bitwise_and(next_gdq, sat_flag)
                 not_current_sat = np.logical_not(current_sat)
                 next_new_sat = next_sat * not_current_sat
-            next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, min_sat_area)
-            sat_ellipses = find_ellipses(new_sat, sat_flag, min_sat_area)
+            sat_ellipses = find_ellipses(new_sat, sat_flag, min_sat_area, group, 'a')
+            next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, min_sat_area, group, 'b')
             # find the ellipse parameters for jump regions
-            jump_ellipses = find_ellipses(gdq[integration, group, :, :], jump_flag, min_jump_area)
+            jump_ellipses = find_ellipses(gdq[integration, group, :, :], jump_flag, min_jump_area, group, 'c')
             if sat_required_snowball:
                 low_threshold = edge_size
                 high_threshold = max(0, nrows - edge_size)
@@ -675,23 +681,30 @@ def flag_large_events(
             )
 
     #  Test to see if the flagging of the saturated cores will be extended into the
-    #  subsequent integrations. Persist_jumps contains all the pixels that were saturated
-    #  in the cores of snowballs.
+    #  subsequent integrations.
+    if mask_persist_grps_next_int:
+        fits.writeto('before_updated_gdq.fits', gdq.astype(int), overwrite=True)
+        last_grp_sat, gdq = flag_sat_in_exposure(gdq, sat_flag)
+        fits.writeto('updated_gdq.fits', gdq.astype(int), overwrite=True)
 
 #    all_sats = np.amax(persist_pixels)
- #   fits.writeto("persist_jumps.fits", np.amax(persist_jumps, axis=0), overwrite=True)
+#   fits.writeto("persist_jumps.fits", np.amax(persist_jumps, axis=0), overwrite=True)
     if write_saturated_cores:
         log.info("Writing snowball cores")
-        out_flagged_jumps = np.logical_or(np.amax(persist_jumps, axis=0), last_grp_sat) * sat_flag
-#        fits.writeto("out_flagged_jumps.fits", out_flagged_jumps, overwrite=True)
+#        fits.writeto("persist_jumps_snowball.fits", persist_jumps, overwrite=True)
+        out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+#        out_flagged_jumps = np.logical_or(np.amax(persist_jumps, axis=0), last_grp_sat) * sat_flag
+        fits.writeto("out_flagged_jumps.fits", out_flagged_jumps, overwrite=True)
 #        fits.writeto('last_grp_sat.fits', last_grp_sat, overwrite=True)
-        saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=1)
+#        saturation_mask = shrink_single_pixel_sat(out_flagged_jumps.astype(int), num_pixels_flagged=1)
+#        saturation_mask = (out_flagged_jumps == sat_flag) // sat_flag
         fits.writeto(fits_loc + str(exp_stop) + "_" + detector_name + "_saturated_cores.fits",
-                     saturation_mask, overwrite=True)
+                     out_flagged_jumps, overwrite=True)
+        # If possible read the saturation mask and update the gdq
         new_gdq = flag_previous_saturation(gdq, str(exp_start), detector_name, fits_loc)
         return new_gdq, total_snowballs
-    else:
-        return gdq, total_snowballs
+#    else:
+    return gdq, total_snowballs
 def extend_saturation(
     cube, grp, sat_ellipses, sat_flag, jump_flag, min_sat_radius_extend, persist_jumps,
     expansion=2, max_extended_radius=200
@@ -840,13 +853,19 @@ def find_circles(dqplane, bitmask, min_area):
     return [cv.minEnclosingCircle(con) for con in bigcontours]
 
 
-def find_ellipses(dqplane, bitmask, min_area):
+def find_ellipses(dqplane, bitmask, min_area, grp, flag):
     # Using an input DQ plane this routine will find the groups of pixels with
     # at least the minimum
     # area and return a list of the minimum enclosing ellipse parameters.
-    pixels = np.bitwise_and(dqplane, bitmask)
-    contours, hierarchy = cv.findContours(pixels, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    bigcontours = [con for con in contours if cv.contourArea(con) > min_area]
+    pixels = np.bitwise_and(dqplane, bitmask) // bitmask
+    contours, hierarchy = cv.findContours(pixels, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+    if grp == 26 and flag == 'a':
+        fits.writeto("pixels_" + flag+".fits", pixels, overwrite=True)
+        print("Contours: ", len(contours))
+        if min_area < 1:
+            for con in contours:
+                print(con)
+    bigcontours = [con for con in contours if cv.contourArea(con) >= min_area]
     # minAreaRect is used because fitEllipse requires 5 points and it is
     # possible to have a contour
     # with just 4 points.
@@ -874,12 +893,25 @@ def make_snowballs(
     # of the saturation circle within the enclosing jump rectangle.
     snowballs = []
     num_groups = gdq.shape[1]
+    if integration == 0 and group == 26:
+        print("Sat ellipses detected")
+        print("number of next saturations", len(next_sat_ellipses))
+        # print("jump ", jump)
+        print("old sats")
+        for sat in sat_ellipses:
+            print(sat)
+        print("next sats")
+        for sat in next_sat_ellipses:
+            print(sat)
+
     for jump in jump_ellipses:
         if near_edge(jump, low_threshold, high_threshold):
             # if the jump ellipse is near the edge, do not require saturation in the
             # center of the jump ellipse
             snowballs.append(jump)
         else:
+
+
             for sat in sat_ellipses:
                 if ((point_inside_ellipse(sat[0], jump) and jump not in snowballs)):
                     snowballs.append(jump)
@@ -1201,14 +1233,21 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
         file = full_file.removeprefix(fits_loc)
         file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
         delta_time_min = (float(start_time) - file_time) * 1440.
+ #       print(start_time, delta_time_min)
         if delta_time_min > 0 and delta_time_min < 120:
             delta_times.append(delta_time_min)
             good_files.append(file)
+ #   print(good_files)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
+ #       print('index_of_closest_file', index_of_closest_file)
         saturation_mask = fits.getdata(fits_loc + good_files[index_of_closest_file])
+ #       print("saturation file name ", good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
+        # only mask the first integration
+        fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)
         new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
+        fits.writeto('new_gdq.fits', new_gdq, overwrite=True)
         return new_gdq
     else:
         return in_gdq
@@ -1216,26 +1255,26 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
 
 def flag_sat_in_exposure(in_gdq, sat_flag):
     #  Find the saturated pixels at the end of each integration and or them to all groups in the next integration
-    #  Note that this causes saturation to extend to all subsequent integrations.
     #  Optimal implementation should have more flexibility
     nints, ngrps, nrows, ncols = in_gdq.shape
     out_gdq = in_gdq.copy()
     start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
     last_grp_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
     for intg in range(nints):
-        last_grp_sat[intg, :, :] = np.bitwise_and(out_gdq[intg, -1, :, :], sat_flag)
+        last_grp_sat[intg, :, :] = np.bitwise_and(in_gdq[intg, -1, :, :], sat_flag)
         if intg > 0:
-            start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
-        out_gdq[intg:, :, :, :] = np.bitwise_or(out_gdq[intg:, :, :, :], start_sat[intg, np.newaxis, :, :])
-#    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
-#    fits.writeto("start_sat.fits", start_sat, overwrite=True)
+            #start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
+            out_gdq[intg:, :, :, :] = np.bitwise_or(in_gdq[intg:, :, :, :], last_grp_sat[intg - 1, np.newaxis, :, :])
+
+    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
+#    fits.writeto("last_grp_sat.fits", last_grp_sat, overwrite=True)
 #    fits.writeto("exposure_out_gdq.fits", out_gdq.astype(int), overwrite=True)
     return last_grp_sat[-1, :, :], out_gdq
 
 
-def shrink_single_pixel_sat(inmask, num_pixels_flagged=1):
+def shrink_single_pixel_sat(inmask, num_pixels_flagged=1, out_flag=1):
     outmask = inmask.copy()
-    target = np.ones(shape=(5, 5), dtype=np.uint32) * 2
+    target = np.ones(shape=(5, 5), dtype=np.uint32) * out_flag
     target[0, :] = 0
     target[:, 0] = 0
     target[4, :] = 0
