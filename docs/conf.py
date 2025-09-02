@@ -3,19 +3,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import stsci_rtd_theme
-
 if sys.version_info < (3, 11):
     import tomli as tomllib
 else:
     import tomllib
-
-
-def setup(app):
-    try:
-        app.add_css_file("stsci.css")
-    except AttributeError:
-        app.add_stylesheet("stsci.css")
 
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -47,6 +38,13 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable", None),
     "gwcs": ("https://gwcs.readthedocs.io/en/latest/", None),
     "astropy": ("https://docs.astropy.org/en/stable/", None),
+    "tweakwcs": ("https://tweakwcs.readthedocs.io/en/latest/", None),
+    "drizzle": (
+        "https://spacetelescope-drizzle.readthedocs.io/en/latest/",
+        None
+    ),
+    "imagestats": ("https://stsciimagestats.readthedocs.io/en/latest/", None),
+    "spherical_geometry": ("https://spherical-geometry.readthedocs.io/en/latest/", None),
 }
 
 extensions = [
@@ -71,12 +69,22 @@ autosummary_generate = True
 numpydoc_show_class_members = False
 autoclass_content = "both"
 
-html_theme = "stsci_rtd_theme"
-html_theme_options = {"collapse_navigation": True}
-html_theme_path = [stsci_rtd_theme.get_html_theme_path()]
+html_theme = "sphinx_rtd_theme"
+html_logo = "_static/stsci_pri_combo_mark_white.png"
+html_theme_options = {
+    "collapse_navigation": True,
+}
 html_domain_indices = True
 html_sidebars = {"**": ["globaltoc.html", "relations.html", "searchbox.html"]}
 html_use_index = True
 
 # Enable nitpicky mode - which ensures that all references in the docs resolve.
-nitpicky = True
+nitpicky = False  # True does not work with enumerated parameter values
+
+nitpick_ignore = [
+    ("py:class", "optional"),
+    ("py:class", "np.ndarray"),
+    ("py:class", "stsci.imagestats.ImageStats"),  # intersphinx isn't working here
+    ("py:class", "spherical_geometry.polygon.SphericalPolygon"), # intersphinx isn't working here
+]
+

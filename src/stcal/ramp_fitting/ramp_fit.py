@@ -16,11 +16,10 @@
 import logging
 
 import numpy as np
-from astropy import units as u
 
 from . import (
-    gls_fit,  # used only if algorithm is "GLS"
-    ols_fit,  # used only if algorithm is "OLS"
+    likely_fit, # used only if algorithm is "LIKELY"
+    ols_fit,    # used only if algorithm is "OLS_C"
     ramp_fit_class,
 )
 
@@ -30,7 +29,7 @@ log.setLevel(logging.DEBUG)
 BUFSIZE = 1024 * 300000  # 300Mb cache size for data section
 
 
-def create_ramp_fit_class(model, dqflags=None, suppress_one_group=False):
+def create_ramp_fit_class(model, algorithm, dqflags=None, suppress_one_group=False):
     """
     Create an internal ramp fit class from a data model.
 
@@ -38,6 +37,10 @@ def create_ramp_fit_class(model, dqflags=None, suppress_one_group=False):
     ----------
     model : data model
         input data model, assumed to be of type RampModel
+
+    algorithm : str
+        'OLS_C' specifies that ordinary least squares should be used;
+        'LIKELY' specifies that maximum likelihood should be used.
 
     dqflags : dict
         The data quality flags needed for ramp fitting.
@@ -53,19 +56,37 @@ def create_ramp_fit_class(model, dqflags=None, suppress_one_group=False):
     """
     ramp_data = ramp_fit_class.RampData()
 
-    if not hasattr(model, 'average_dark_current'):
-        dark_current_array = np.zeros_like(model.pixeldq)
-    else:
+    if model.hasattr("average_dark_current"):
         dark_current_array = model.average_dark_current
-
-    if isinstance(model.data, u.Quantity):
-        ramp_data.set_arrays(model.data.value, model.err.value, model.groupdq,
-                             model.pixeldq, dark_current_array)
     else:
-        ramp_data.set_arrays(model.data, model.err, model.groupdq, model.pixeldq, dark_current_array)
+        dark_current_array = np.zeros(model.pixeldq.shape, dtype=np.float32)
 
-    # Attribute may not be supported by all pipelines.  Default is NoneType.
-    drop_frames1 = model.meta.exposure.drop_frames1 if hasattr(model, "drop_frames1") else None
+    if model.hasattr("zeroframe"):
+        zeroframe = model.zeroframe
+    else:
+        zeroframe = None
+
+    orig_gdq = None
+    if algorithm.upper() == "OLS_C":
+        wh_chargeloss = model.groupdq & dqflags['CHARGELOSS']
+        if np.any(wh_chargeloss > 0):
+            orig_gdq = model.groupdq.copy()
+        del wh_chargeloss
+
+    ramp_data.set_arrays(
+        model.data,
+        model.groupdq,
+        model.pixeldq,
+        dark_current_array,
+        orig_gdq=orig_gdq,
+        zeroframe=zeroframe,
+    )
+
+    # Attribute may not be supported by all pipelines.  Default is None.
+    if hasattr(model.meta.exposure, "drop_frames1"):
+        drop_frames1 = model.meta.exposure.drop_frames1
+    else:
+        drop_frames1 = None
     ramp_data.set_meta(
         name=model.meta.instrument.name,
         frame_time=model.meta.exposure.frame_time,
@@ -75,8 +96,9 @@ def create_ramp_fit_class(model, dqflags=None, suppress_one_group=False):
         drop_frames1=drop_frames1,
     )
 
-    if "zero_frame" in model.meta.exposure and model.meta.exposure.zero_frame:
-        ramp_data.zeroframe = model.zeroframe
+    ramp_data.algorithm = algorithm
+    if hasattr(model.meta.exposure, "read_pattern"):
+        ramp_data.read_pattern = [list(reads) for reads in model.meta.exposure.read_pattern]
 
     ramp_data.set_dqflags(dqflags)
     ramp_data.start_row = 0
@@ -89,7 +111,6 @@ def create_ramp_fit_class(model, dqflags=None, suppress_one_group=False):
 
 def ramp_fit(
     model,
-    buffsize,
     save_opt,
     readnoise_2d,
     gain_2d,
@@ -112,9 +133,6 @@ def ramp_fit(
     model : data model
         input data model, assumed to be of type RampModel
 
-    buffsize : int
-        size of data section (buffer) in bytes
-
     save_opt : bool
        calculate optional fitting results
 
@@ -125,8 +143,8 @@ def ramp_fit(
         2-D array gain for all pixels
 
     algorithm : str
-        'OLS' specifies that ordinary least squares should be used;
-        'GLS' specifies that generalized least squares should be used.
+        'OLS_C' specifies that ordinary least squares should be used;
+        'LIKELY' specifies that maximum likelihood should be used.
 
     weighting : str
         'optimal' specifies that optimal weighting should be used;
@@ -157,10 +175,6 @@ def ramp_fit(
 
     opt_info : tuple
         The tuple of computed optional results arrays for fitting.
-
-    gls_opt_model : GLS_RampFitModel object or None (Unused for now)
-        Object containing optional GLS-specific ramp fitting data for the
-        exposure
     """
     if suppress_one_group and model.data.shape[1] == 1:
         # One group ramp suppression should only be done on data with
@@ -170,18 +184,15 @@ def ramp_fit(
     # Create an instance of the internal ramp class, using only values needed
     # for ramp fitting from the to remove further ramp fitting dependence on
     # data models.
-    ramp_data = create_ramp_fit_class(model, dqflags, suppress_one_group)
-
-    if algorithm.upper() == "OLS_C":
-        ramp_data.dbg_run_c_code = True
+    ramp_data = create_ramp_fit_class(model, algorithm, dqflags, suppress_one_group)
 
     return ramp_fit_data(
-        ramp_data, buffsize, save_opt, readnoise_2d, gain_2d, algorithm, weighting, max_cores, dqflags
+        ramp_data, save_opt, readnoise_2d, gain_2d, algorithm, weighting, max_cores
     )
 
 
 def ramp_fit_data(
-    ramp_data, buffsize, save_opt, readnoise_2d, gain_2d, algorithm, weighting, max_cores, dqflags
+    ramp_data, save_opt, readnoise_2d, gain_2d, algorithm, weighting, max_cores
 ):
     """
     This function begins the ramp fit computation after the creation of the
@@ -193,9 +204,6 @@ def ramp_fit_data(
     ramp_data : RampData
         Input data necessary for computing ramp fitting.
 
-    buffsize : int
-        size of data section (buffer) in bytes
-
     save_opt : bool
        calculate optional fitting results
 
@@ -206,8 +214,8 @@ def ramp_fit_data(
         2-D array gain for all pixels
 
     algorithm : str
-        'OLS' specifies that ordinary least squares should be used;
-        'GLS' specifies that generalized least squares should be used.
+        'OLS_C' specifies that ordinary least squares should be used;
+        'LIKELY' specifies that maximum likelihood should be used.
 
     weighting : str
         'optimal' specifies that optimal weighting should be used;
@@ -220,10 +228,6 @@ def ramp_fit_data(
         to use for multi-proc. The total number of cores includes the SMT cores
         (Hyper Threading for Intel).
 
-    dqflags : dict
-        A dictionary with at least the following keywords:
-        DO_NOT_USE, SATURATED, JUMP_DET, NO_GAIN_VALUE, UNRELIABLE_SLOPE
-
     Returns
     -------
     image_info : tuple
@@ -234,18 +238,23 @@ def ramp_fit_data(
 
     opt_info : tuple
         The tuple of computed optional results arrays for fitting.
-
-    gls_opt_model : GLS_RampFitModel object or None (Unused for now)
-        Object containing optional GLS-specific ramp fitting data for the
-        exposure
     """
-    if algorithm.upper() == "GLS":
-        image_info, integ_info, gls_opt_info = gls_fit.gls_ramp_fit(
-            ramp_data, buffsize, save_opt, readnoise_2d, gain_2d, max_cores
+    # For the LIKELY algorithm, due to the jump detection portion of the code
+    # a minimum of a four group ramp is needed.
+    ngroups = ramp_data.data.shape[1]
+    if algorithm.upper() == "LIKELY" and ngroups < likely_fit.LIKELY_MIN_NGROUPS:
+        log.info(f"When selecting the LIKELY ramp fitting algorithm the"
+                  " ngroups needs to be a minimum of {likely_fit.LIKELY_MIN_NGROUPS},"
+                  " but ngroups = {ngroups}.  Due to this, the ramp fitting algorithm"
+                  " is being changed to OLS_C")
+        algorithm = "OLS_C"
+        
+    if algorithm.upper() == "LIKELY" and ngroups >= likely_fit.LIKELY_MIN_NGROUPS:
+        image_info, integ_info, opt_info = likely_fit.likely_ramp_fit(
+            ramp_data, readnoise_2d, gain_2d
         )
-        opt_info = None
     else:
-        # Default to OLS.
+        # Default to OLS_C.
         # Get readnoise array for calculation of variance of noiseless ramps, and
         #   gain array in case optimal weighting is to be done
         nframes = ramp_data.nframes
@@ -257,11 +266,10 @@ def ramp_fit_data(
 
         # Compute ramp fitting using ordinary least squares.
         image_info, integ_info, opt_info = ols_fit.ols_ramp_fit_multi(
-            ramp_data, buffsize, save_opt, readnoise_2d, gain_2d, weighting, max_cores
+            ramp_data, save_opt, readnoise_2d, gain_2d, weighting, max_cores
         )
-        gls_opt_info = None
 
-    return image_info, integ_info, opt_info, gls_opt_info
+    return image_info, integ_info, opt_info
 
 
 def suppress_one_good_group_ramps(ramp_data):

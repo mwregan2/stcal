@@ -12,12 +12,15 @@ from stcal.alignment import resample_utils
 from stcal.alignment.util import (
     _validate_wcs_list,
     compute_fiducial,
+    _compute_fiducial_from_footprints,
+    compute_s_region_imaging,
+    compute_s_region_keyword,
     compute_scale,
     reproject,
-    update_s_region_imaging,
-    update_s_region_keyword,
+    sregion_to_footprint,
     wcs_bbox_from_shape,
     wcs_from_footprints,
+    wcs_from_sregions
 )
 
 
@@ -26,9 +29,8 @@ def _create_wcs_object_without_distortion(
     pscale,
     shape,
 ):
-    # subtract 1 to account for pixel indexing starting at 0
+    # subtract 0 shift to mimic a resampled WCS that does include shift transforms
     shift = models.Shift() & models.Shift()
-
     scale = models.Scale(pscale[0]) & models.Scale(pscale[1])
 
     tan = models.Pix2Sky_TAN()
@@ -71,6 +73,9 @@ def _create_wcs_and_datamodel(fiducial_world, shape, pscale):
 
 
 class WcsInfo:
+    """
+    JWST-like wcsinfo object
+    """
     def __init__(self, ra_ref, dec_ref, roll_ref, v2_ref, v3_ref, v3yangle):
         self.ra_ref = ra_ref
         self.dec_ref = dec_ref
@@ -83,6 +88,22 @@ class WcsInfo:
         self.vparity = -1
         self.wcsaxes = 2
         self.s_region = ""
+        self.instance = self.instance()
+
+    def instance(self):
+        return {
+            "ra_ref": self.ra_ref,
+            "dec_ref": self.dec_ref,
+            "ctype1": self.ctype1,
+            "ctype2": self.ctype2,
+            "v2_ref": self.v2_ref,
+            "v3_ref": self.v3_ref,
+            "v3yangle": self.v3yangle,
+            "roll_ref": self.roll_ref,
+            "vparity": self.vparity,
+            "wcsaxes": self.wcsaxes,
+            "s_region": self.s_region,
+        }
 
 
 class Coordinates:
@@ -98,11 +119,13 @@ class MetaData:
 
 
 class DataModel:
+    """JWST-like datamodel object"""
     def __init__(self, ra_ref, dec_ref, roll_ref, v2_ref, v3_ref, v3yangle, wcs=None):
         self.meta = MetaData(ra_ref, dec_ref, roll_ref, v2_ref, v3_ref, v3yangle, wcs=wcs)
 
 
-def test_compute_fiducial():
+@pytest.mark.parametrize("footprint", [True, False])
+def test_compute_fiducial(footprint):
     """Test that util.compute_fiducial can properly determine the center of the
     WCS's footprint.
     """
@@ -112,8 +135,11 @@ def test_compute_fiducial():
     pscale = (0.000014, 0.000014)  # in deg/pixel
 
     wcs = _create_wcs_object_without_distortion(fiducial_world=fiducial_world, shape=shape, pscale=pscale)
-
-    computed_fiducial = compute_fiducial([wcs])
+    if footprint:
+        footprint = wcs.footprint()
+        computed_fiducial = _compute_fiducial_from_footprints([footprint])
+    else:
+        computed_fiducial = compute_fiducial([wcs])
 
     assert all(np.isclose(wcs(1, 1), computed_fiducial))
 
@@ -135,7 +161,21 @@ def test_compute_scale(pscales):
     assert np.isclose(expected_scale, computed_scale)
 
 
-def test_wcs_from_footprints():
+def test_sregion_to_footprint():
+    """Test that util.sregion_to_footprint can properly convert an S_REGION
+    string to a list of vertices.
+    """
+    s_region = "POLYGON ICRS  1.000000000 2.000000000 3.000000000 4.000000000 5.000000000 6.000000000 7.000000000 8.000000000"
+    expected_footprint = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
+
+    footprint = sregion_to_footprint(s_region)
+
+    assert footprint.shape == (4, 2)
+    assert np.allclose(footprint, expected_footprint)
+
+
+@pytest.mark.parametrize("s_regions", [True, False])
+def test_wcs_from_footprints(s_regions):
     """
     Test that the WCS created from wcs_from_footprints has correct vertice coordinates.
 
@@ -159,13 +199,26 @@ def test_wcs_from_footprints():
     dm_2 = _create_wcs_and_datamodel(fiducial_world, shape, pscale)
     wcs_2 = dm_2.meta.wcs
 
-    wcs = wcs_from_footprints([dm_1, dm_2])
+    if s_regions:
+        footprints = [wcs_1.footprint(), wcs_2.footprint()]
+        wcs = wcs_from_sregions(footprints, wcs_1, dm_1.meta.wcsinfo.instance)
+    else:
+        wcs_list = [wcs_1, wcs_2]
+        msg = "wcs_from_footprints is deprecated and will be removed"
+        with pytest.warns(DeprecationWarning, match=msg):
+            wcs = wcs_from_footprints(
+                wcs_list,
+                wcs_1,
+                dm_1.meta.wcsinfo.instance
+            )
 
-    # check that all elements of footprint match the *vertices* of the new combined WCS
-    assert all(np.isclose(wcs.footprint()[0], wcs(0, 0)))
-    assert all(np.isclose(wcs.footprint()[1], wcs(0, 4)))
-    assert all(np.isclose(wcs.footprint()[2], wcs(4, 4)))
-    assert all(np.isclose(wcs.footprint()[3], wcs(4, 0)))
+    # check that all elements of footprint match the *vertices* of the new
+    # combined WCS
+    footprnt = wcs.footprint()
+    assert all(np.isclose(footprnt[0], wcs(-0.5, -0.5)))
+    assert all(np.isclose(footprnt[1], wcs(-0.5, 3.5)))
+    assert all(np.isclose(footprnt[2], wcs(3.5, 3.5)))
+    assert all(np.isclose(footprnt[3], wcs(3.5, -0.5)))
 
     # check that fiducials match their expected coords in the new combined WCS
     assert all(np.isclose(wcs_1(0, 0), wcs(2.5, 1.5)))
@@ -269,6 +322,14 @@ def test_wcs_bbox_from_shape_2d():
     assert bb == ((-0.5, 2047.5), (-0.5, 511.5))
 
 
+def test_wcs_bbox_from_shape_3d():
+    bb = wcs_bbox_from_shape((3, 32, 2048))
+    assert bb == ((-0.5, 2047.5), (-0.5, 31.5))
+
+    bb = wcs_bbox_from_shape((750, 45, 50))
+    assert bb == ((-0.5, 49.5), (-0.5, 44.5))
+
+
 @pytest.mark.parametrize(
     ("shape", "pixmap_expected_shape"),
     [
@@ -295,16 +356,16 @@ def test_calc_pixmap_shape(shape, pixmap_expected_shape):
         (
             _create_wcs_and_datamodel((10, 0), (3, 3), (0.000028, 0.000028)),
             np.array([[1.0, 2.0], [3.0, np.nan], [5.0, 6.0], [7.0, 8.0]]),
-            "",
+        None,
             "There are NaNs in s_region, S_REGION not updated.",
         ),
     ],
 )
-def test_update_s_region_keyword(model, footprint, expected_s_region, expected_log_info, caplog):
+def test_compute_s_region_keyword(model, footprint, expected_s_region, expected_log_info, caplog):
     """
     Test that S_REGION keyword is being properly populated with the coordinate values.
     """
-    update_s_region_keyword(model, footprint)
+    model.meta.wcsinfo.s_region = compute_s_region_keyword(footprint)
     assert model.meta.wcsinfo.s_region == expected_s_region
     assert expected_log_info in caplog.text
 
@@ -340,7 +401,7 @@ def test_wcs_bbox_from_shape(shape, expected_bbox):
         ),
     ],
 )
-def test_update_s_region_imaging(model, bounding_box, data):
+def test_compute_s_region_imaging(model, bounding_box, data):
     """
     Test that S_REGION keyword is being properly updated with the coordinates
     corresponding to the footprint (same as WCS(bounding box)).
@@ -353,6 +414,9 @@ def test_update_s_region_imaging(model, bounding_box, data):
         *model.meta.wcs(2.5, 2.5),
         *model.meta.wcs(2.5, -0.5),
     ]
-    update_s_region_imaging(model, center=False)
+    shape = data.shape if data is not None else None
+    model.meta.wcsinfo.s_region = compute_s_region_imaging(model.meta.wcs, shape=shape, center=False)
     updated_s_region_coords = [float(x) for x in model.meta.wcsinfo.s_region.split(" ")[3:]]
-    assert all(np.isclose(x, y) for x, y in zip(updated_s_region_coords, expected_s_region_coords))
+    assert all(np.isclose(x, y) for x, y in zip(updated_s_region_coords,
+                                                expected_s_region_coords,
+                                                strict=False))
