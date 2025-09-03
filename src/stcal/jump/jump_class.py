@@ -1,6 +1,7 @@
 INDENT = "    "
 DELIM = "-" * 80
 
+
 class JumpData:
     """Contains data needed for detecting jumps."""
 
@@ -196,8 +197,19 @@ class JumpData:
         self.max_cores = None  # Number of processes
         self.start_row = 0  # Start row of current slice
         self.end_row = 0  # End row of current slice
-        self.tot_row = 0 # Total number of rows in slice
+        self.tot_row = 0  # Total number of rows in slice
 
+        # Snowball persistence flagging
+        self.exp_start_time = 0  # time (Julian Day) of start of exposure
+        self.exp_stop_time = 0  # time (Julian Day) of end of exposure
+        self.file_dir = ''  # The output directory
+        self.detector_name = ''  # The name of the detector
+        self.write_saturated_cores = False  # Whether to write file with pixels to mask in next exp
+        self.mask_persist_grps_next_int = False  # Whether to mask the next int after a pixel is saturated
+        self.detector_name = ''
+        self.exp_start_time = ''
+        self.exp_stop_time = ''
+        self.file_dir = ''
     def init_arrays_from_model(self, jump_model):
         """
         Set arrays from a data model.
@@ -295,7 +307,8 @@ class JumpData:
         self.after_jump_flag_n2 = n2
 
     def set_snowball_info(
-            self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge):
+            self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge, write_saturated_cores, mask_persist_grps_next_int,
+            detector_name, exp_start_time, exp_stop_time, file_dir):
         """
         Set class instance values needed for snowball handling.
 
@@ -312,7 +325,7 @@ class JumpData:
             The minimum area of saturated pixels within the jump circle to trigger
             the creation of a snowball.
 
-        expfact : float
+        exfact : float
             The factor that increases the size of the snowball or enclosing ellipse.
 
         require : bool
@@ -329,6 +342,24 @@ class JumpData:
 
         edge : int
             The distance from the edge of the detector where saturated cores are not required for snowball detection
+
+        write_saturated_cores : bool
+                 Whether to write the saturated cores to the output directory.
+
+        mask_persist_grps_next_int : bool
+                 Whether to mask pixels in the next int that are saturated in the current int
+
+        detector_name : str
+                The name of the detector
+
+        exp_start_time : float
+            The start time of the current exposure in Julian Date
+
+        exp_stop_time : float
+            The stop time of the current exposure in Julian Date
+
+        file_dir : str
+            The output directory that will store the saturated pixels mask
         """
         self.expand_large_events = levent
         self.min_jump_area = mjarea
@@ -338,6 +369,13 @@ class JumpData:
         self.min_sat_radius_extend = satrad
         self.sat_expand = satexp
         self.edge_size = edge
+        self.write_saturated_cores = write_saturated_cores
+        self.mask_persist_grps_next_int = mask_persist_grps_next_int
+        self.detector_name = detector_name
+        self.exp_start_time = exp_start_time
+        self.exp_stop_time = exp_stop_time
+        self.file_dir = file_dir
+
 
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
         """
