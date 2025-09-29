@@ -623,3 +623,29 @@ def test_calc_num_slices():
     assert calc_num_slices(n_rows, "3/4", max_available_cores) == 1
     n_rows = 9
     assert calc_num_slices(n_rows, "21", max_available_cores) == 9
+
+def test_small_snowballs():
+#    hdul = fits.open('/users/mregan/Documents/notebooks/Garden_CR_persist2_sig_sat0.5/jw02123001001_05101_00001_nrs1_jump.fits')
+    gdq = fits.getdata('data/in_nrs1_5101_gdq.fits')
+#    gdq = hdul['GROUPDQ'].data
+    jump = 4
+    sat = 2
+    gain = 1
+    rnoise = 12
+    frame_time = 14.5
+    nframes = 5
+    groupgap = 0
+    tm = frame_time, nframes, groupgap
+    dims = gdq.shape
+    jump_data = create_jump_data(dims, gain, rnoise, tm)
+    jump_data.min_sat_area = 0.1
+    jump_data.min_jump_area = 2
+    jump_data.write_saturated_cores = True
+    jump_data.mask_persist_grps_next_int = True
+    jump_data.detector_name = 'NRS1'
+    jump_data.exp_start_time = '60188.20294332176'
+    jump_data.exp_stop_time = '60188.28294332176'
+    jump_data.file_dir = 'data/'
+    new_gdq, total_snowballs = flag_large_events(gdq, jump, sat, jump_data)
+    fits.writeto('test_small_snowball.fits', new_gdq, overwrite=True)
+    print("total_snowballs", total_snowballs)

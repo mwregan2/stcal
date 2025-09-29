@@ -98,12 +98,6 @@ def detect_jumps_data(jump_data):
                     data, gdq, readnoise_2d, twopt_params)
 
     else:
-        print(jump_data)
-        print(twopt_params)
-        print(data.shape)
-        print(gdq.shape)
-        print(readnoise_2d.shape)
-        print(n_slices)
         gdq, total_primary_crs, stddev = twopoint_diff_multi(
             jump_data, twopt_params, data, gdq, readnoise_2d, n_slices)
 
@@ -119,11 +113,12 @@ def detect_jumps_data(jump_data):
         log.info("Total snowballs = %i", total_snowballs)
         number_extended_events = total_snowballs  # XXX overwritten
 
-    if jump_data.find_showers:
+    elif jump_data.find_showers:
         new_gdq, num_showers = find_faint_extended(data, gdq, pdq, readnoise_2d, jump_data)
         log.info("Total showers= %i", num_showers)
         number_extended_events = num_showers  # XXX overwritten
-
+    else:
+        new_gdq = gdq
     elapsed = time.time() - start
     log.info("Total elapsed time = %g sec", elapsed)
 
@@ -139,11 +134,58 @@ def detect_jumps_data(jump_data):
     return new_gdq, pdq, total_primary_crs, number_extended_events, stddev
 
 
-
 def twopoint_diff_multi(jump_data, twopt_params, data, gdq, readnoise_2d, n_slices):
+        """
+        Split data for jump detection multiprocessing.
+
+        Parameters
+        ----------
+        jump_data : JumpData
+            Class containing parameters and methods to detect jumps.
+
+        twopt_params : TwoPointParams
+            Class containing parameters and methods for two point differences.
+
+        data : ndarray
+            The science data, 4D array float.
+
+        gdq : ndarray
+            The group DQ, 4D array uint8.
+
+        readnoise_2d : ndarray
+            The read noise reference, 2D array float.
+
+        n_slices : int
+            The number of data slices for multiprocessing.
+
+        Returns
+        -------
+        gdq : ndarray
+            the group DQ array, 4D uint8
+
+        total_primary_crs : int
+            total number of primary cosmic rays computed
+
+        stddev : float
+            standard deviation computed during sigma clipping
+        """
+        slices, yinc = slice_data(twopt_params, data, gdq, readnoise_2d, n_slices)
+
+        log.info("Creating %d processes for jump detection ", n_slices)
+        ctx = multiprocessing.get_context("spawn")
+        pool = ctx.Pool(processes=n_slices)
+        ######### JUST FOR DEBUGGING #########################
+        # pool = ctx.Pool(processes=1)
+        # Starts each slice in its own process. Starmap allows more than one
+        # parameter to be passed.
+        real_result = pool.starmap(twopt.find_crs, slices)
+        pool.close()
+        pool.join()
+
+        return reassemble_sliced_data(real_result, jump_data, gdq, yinc)
 
 
- def reassemble_sliced_data(real_result, jump_data, gdq, yinc):
+def reassemble_sliced_data(real_result, jump_data, gdq, yinc):
     """
     Reassemble the data from each process for multiprocessing.
 
@@ -331,55 +373,61 @@ def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
     total_snowballs = 0
     nints, ngrps, nrows, ncols = in_gdq.shape
     persist_jumps = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint8)
+    fits.writeto('in_large_gdq.fits', in_gdq, overwrite=True)
+    print("flagging large events")
     if jump_data.mask_persist_grps_next_int:
+        print("masking persist in next grps")
         last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
     else:
         gdq2 = in_gdq
     if jump_data.write_saturated_cores:
+        print("writing saturated cores")
         log.info("Writing snowball cores")
-        last_grp_sat = (np.bitwise_and(gdq2[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+#        last_grp_sat = (np.bitwise_and(gdq2[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
     # If the saturation mask exists, read the saturation mask and update the gdq
-        gdq = flag_previous_saturation(gdq2, str(jump_data.start_time),
-                                       jump_data.detector_name, jump_data.fits_loc)
+        gdq = flag_previous_saturation(gdq2, str(jump_data.exp_start_time),
+                                       jump_data.detector_name, jump_data.file_dir)
     else:
-        for integration in range(nints):
-            log.info("Flagging snowballs in integration %i out of %i", integration + 1, nints)
-            for group in range(1, ngrps):
-                current_gdq = gdq[integration, group, :, :]
-                current_sat = np.bitwise_and(current_gdq, sat_flag)
+        gdq = gdq2
+    for integration in range(nints):
+        log.info("Flagging snowballs in integration %i out of %i", integration + 1, nints)
+        print("Flagging snowballs in integration %i out of %i", integration + 1, nints)
+        for group in range(1, ngrps):
+            current_gdq = gdq[integration, group, :, :]
+            current_sat = np.bitwise_and(current_gdq, sat_flag)
 
-                prev_gdq = gdq[integration, group - 1, :, :]
-                prev_sat = np.bitwise_and(prev_gdq, sat_flag)
+            prev_gdq = gdq[integration, group - 1, :, :]
+            prev_sat = np.bitwise_and(prev_gdq, sat_flag)
 
-                not_prev_sat = np.logical_not(prev_sat)
-                new_sat = current_sat * not_prev_sat
+            not_prev_sat = np.logical_not(prev_sat)
+            new_sat = current_sat * not_prev_sat
 
-                if group < ngrps - 1:
-                    next_gdq = gdq[integration, group + 1, :, :]
-                    next_sat = np.bitwise_and(next_gdq, sat_flag)
-                    not_current_sat = np.logical_not(current_sat)
-                    next_new_sat = next_sat * not_current_sat
+            if group < ngrps - 1:
+                next_gdq = gdq[integration, group + 1, :, :]
+                next_sat = np.bitwise_and(next_gdq, sat_flag)
+                not_current_sat = np.logical_not(current_sat)
+                next_new_sat = next_sat * not_current_sat
 
-                next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, jump_data.min_sat_area)
-                sat_ellipses = find_ellipses(new_sat, sat_flag, jump_data.min_sat_area)
+            next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, jump_data.min_sat_area, 'b')
+            sat_ellipses = find_ellipses(new_sat, sat_flag, jump_data.min_sat_area, 'b')
 
-                # find the ellipse parameters for jump regions
-                jump_ellipses = find_ellipses(
-                    gdq[integration, group, :, :], jump_flag, jump_data.min_jump_area)
+            # find the ellipse parameters for jump regions
+            jump_ellipses = find_ellipses(
+                gdq[integration, group, :, :], jump_flag, jump_data.min_jump_area, 'c')
 
-                if jump_data.sat_required_snowball:
-                    gdq, snowballs, persist_jumps = make_snowballs(
-                        gdq, integration, group, jump_ellipses, sat_ellipses,
-                        next_sat_ellipses, jump_data, persist_jumps,
-                    )
-                else:
-                    snowballs = jump_ellipses
-                n_showers_grp.append(len(snowballs))
-                total_snowballs += len(snowballs)
-                gdq, num_events = extend_ellipses(
-                    gdq, integration, group, snowballs, jump_data,
-                    expansion=jump_data.expand_factor, num_grps_masked=0,
+            if jump_data.sat_required_snowball:
+                gdq, snowballs, persist_jumps = make_snowballs(
+                    gdq, integration, group, jump_ellipses, sat_ellipses,
+                    next_sat_ellipses, jump_data, persist_jumps,
                 )
+            else:
+                snowballs = jump_ellipses
+            n_showers_grp.append(len(snowballs))
+            total_snowballs += len(snowballs)
+            gdq, num_events = extend_ellipses(
+                gdq, integration, group, snowballs, jump_data,
+                expansion=jump_data.expand_factor, num_grps_masked=0,
+            )
 
     #  Test to see if the flagging of the saturated cores will be
     #  extended into the subsequent integrations. Persist_jumps contains
@@ -392,13 +440,18 @@ def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
                         gdq[intg, 1:last_grp_flagged, :, :],
                         np.repeat(persist_jumps[intg - 1, np.newaxis, :, :],
                         last_grp_flagged - 1, axis=0))
-    if write_saturated_cores:
+    if jump_data.write_saturated_cores:
         log.info("Writing snowball cores")
+        print("Writing snowball cores")
+        print("file_dir", jump_data.file_dir)
         out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
-        fits.writeto(jump_data.fits_loc + str(jump_data.exp_stop) + "_" + jump_data.detector_name + "_saturated_cores.fits",
-                     out_flagged_jumps, overwrite=True)
+        fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
+                     "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
+        print('out saturated cores name = ' + jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
+              "_saturated_cores.fits")
         # If possible read the saturation mask and update the gdq
-        new_gdq = flag_previous_saturation(gdq, str(jump_data.exp_start), jump_data.detector_name, jump_data.fits_loc)
+        new_gdq = flag_previous_saturation(gdq, str(jump_data.exp_start_time),
+                                           jump_data.detector_name, jump_data.file_dir)
         return new_gdq, total_snowballs
     else:
         return gdq, total_snowballs
@@ -609,7 +662,7 @@ def extend_ellipses(
     return gdq_cube, num_ellipses
 
 
-def find_ellipses(dqplane, bitmask, min_area):
+def find_ellipses(dqplane, bitmask, min_area, version):
     """
     Find ellipses based on DQ masks in bitmask.
 
@@ -639,7 +692,10 @@ def find_ellipses(dqplane, bitmask, min_area):
     # minAreaRect is used because fitEllipse requires 5 points and it is
     # possible to have a contour
     # with just 4 points.
-    return [cv.minAreaRect(con) for con in bigcontours]
+    if version == 'b':
+        return [cv.minAreaRect(con) for con in contours]
+    else:
+        return [cv.minAreaRect(con) for con in bigcontours]
 
 
 def make_snowballs(
@@ -1350,28 +1406,33 @@ def calc_num_slices(n_rows, max_cores, max_available):
     return min([n_rows, n_slices, max_available])
 
 
-def flag_previous_saturation(in_gdq, start_time, detector_name, fits_loc):
-    today_search = fits_loc + str(round(float(start_time))) + "*" + detector_name + "*"
+def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, saturation_mask_window=120):
+    print("inside flag_previous_saturation")
+    today_search = file_dir + str(round(float(start_time))) + "*" + detector_name + "*"
+    print("flag previous saturation", today_search)
+    print("file_dir", file_dir)
+    print("start time of exp", start_time)
     today_files = glob(today_search + "*")
-    yesterday_search = fits_loc + str(round(float(start_time) - 1)) + "*" + detector_name + "*"
+    yesterday_search = file_dir + str(round(float(start_time) - 1)) + "*" + detector_name + "*"
     yesterday_files = glob(yesterday_search + "*")
     all_files = (yesterday_files + today_files)
+    print("all_files", all_files)
     delta_times = []
     good_files = []
     for full_file in all_files:
-        file = full_file.removeprefix(fits_loc)
+        file = full_file.removeprefix(file_dir)
         file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
         delta_time_min = (float(start_time) - file_time) * 1440.
- #       print(start_time, delta_time_min)
-        if delta_time_min > 0 and delta_time_min < 120:
+        print('start time', start_time, 'delta time', delta_time_min)
+        if delta_time_min > 0 and (delta_time_min < saturation_mask_window):
             delta_times.append(delta_time_min)
             good_files.append(file)
- #   print(good_files)
+    print("good files", good_files)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
- #       print('index_of_closest_file', index_of_closest_file)
-        saturation_mask = fits.getdata(fits_loc + good_files[index_of_closest_file])
- #       print("saturation file name ", good_files[index_of_closest_file])
+        print('index_of_closest_file', index_of_closest_file)
+        saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
+        print("saturation file name ", good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
         # only mask the first integration
         fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)

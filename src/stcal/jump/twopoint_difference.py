@@ -196,6 +196,7 @@ def run_jump_detection(
     # Test to see if there are enough groups to use sigma clipping
     stddev = None
     if (check_sigma_clip_groups(nints, total_groups, twopt_p)):
+        print("running sigma clipping")
         gdq, stddev = det_jump_sigma_clipping(
             gdq, nints, ngroups, total_groups, first_diffs_finite, first_diffs, twopt_p)
     else:  # There are not enough groups for sigma clipping
@@ -421,6 +422,7 @@ def det_jump_sigma_clipping(
     clipped_diffs, alow, ahigh = stats.sigma_clip(
         first_diffs, sigma=twopt_p.normal_rej_thresh,
         axis=axis, masked=True, return_bounds=True)
+    print("after stats.sigma_clip")
 
     # get the standard deviation from the bounds of sigma clipping
     stddev = 0.5 * (ahigh - alow) / twopt_p.normal_rej_thresh
@@ -464,6 +466,11 @@ def check_sigma_clip_groups(nints, total_groups, twopt_p):
     """
     test1 = (twopt_p.only_use_ints and nints >= twopt_p.minimum_sigclip_groups)
     test2 = (not twopt_p.only_use_ints and total_groups >= twopt_p.minimum_sigclip_groups)
+    print("test1: {}".format(test1), "test2: {}".format(test2))
+    print(twopt_p.only_use_ints)
+    print(twopt_p.minimum_sigclip_groups)
+    print(total_groups)
+    print(twopt_p.minimum_sigclip_groups)
     return test1 or test2
 
 
