@@ -198,6 +198,13 @@ class JumpData:
         self.end_row = 0  # End row of current slice
         self.tot_row = 0 # Total number of rows in slice
 
+        self.write_saturated_cores = False
+        self.mask_snowball_core_next_int = False
+        self.detector_name = ""
+        self.exp_start_time = 0
+        self.exp_end_time = 0
+        self.file_dir = ''
+
     def init_arrays_from_model(self, jump_model):
         """
         Set arrays from a data model.
@@ -295,7 +302,10 @@ class JumpData:
         self.after_jump_flag_n2 = n2
 
     def set_snowball_info(
-            self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge):
+            self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge,
+            saturated_cores, mask_snowball_core_next_int, detector_name,
+            start_time, end_time, file_location
+    ):
         """
         Set class instance values needed for snowball handling.
 
@@ -338,6 +348,13 @@ class JumpData:
         self.min_sat_radius_extend = satrad
         self.sat_expand = satexp
         self.edge_size = edge
+        self.write_saturated_cores = saturated_cores
+        self.mask_snowball_core_next_int = mask_snowball_core_next_int
+        self.detector_name = detector_name
+        self.exp_start_time = start_time
+        self.exp_end_time = end_time
+        self.file_dir = file_location
+
 
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
         """
