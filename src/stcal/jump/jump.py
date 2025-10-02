@@ -462,8 +462,11 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
         minor_axis = min(ellipse[1][1], ellipse[1][0])
 
         if minor_axis > jump_data.min_sat_radius_extend:
-            axis1 = ellipse[1][0] + jump_data.sat_expand
-            axis2 = ellipse[1][1] + jump_data.sat_expand
+            # set the new saturation sizes
+            # There is a minimum radius increase controlled by the sat_expand parameter
+            # larger snowballs will scale their new size proportionally
+            axis1 = ellipse[1][0] + max(jump_data.sat_expand, ellipse[1][0] * jump_data.ratio_sat_extend)
+            axis2 = ellipse[1][1] + max(jump_data.sat_expand, ellipse[1][1] * jump_data.ratio_sat_extend)
             axis1 = min(axis1, jump_data.max_extended_radius)
             axis2 = min(axis2, jump_data.max_extended_radius)
 

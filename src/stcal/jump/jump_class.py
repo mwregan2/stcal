@@ -354,6 +354,7 @@ class JumpData:
         self.exp_start_time = start_time
         self.exp_end_time = end_time
         self.file_dir = file_location
+        self.ratio_sat_extend = 1.2
 
 
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
