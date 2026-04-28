@@ -367,6 +367,12 @@ class JumpData:
         self.min_sat_radius_extend = satrad
         self.sat_expand = satexp
         self.edge_size = edge
+        self.write_saturated_cores = write_saturated_cores
+        self.mask_persist_grps_next_int = mask_persist_grps_next_int
+        self.detector_name = detector_name
+        self.exp_start_time = exp_start_time
+        self.exp_stop_time = exp_stop_time
+        self.file_dir = file_dir
 
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
         """
