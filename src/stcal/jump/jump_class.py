@@ -226,7 +226,12 @@ class JumpData:
         self.start_row = 0  # Start row of current slice
         self.end_row = 0  # End row of current slice
         self.tot_row = 0  # Total number of rows in slice
-
+        self.write_saturated_cores = True
+        self.detector_name = 'None'
+        self.exp_start_time = ''
+        self.exp_stop_time = ''
+        self.file_dir = ''
+        self.ratio_sat_expand = 2.0
     def init_arrays_from_model(self, jump_model):
         """
         Set arrays from a data model.
@@ -323,7 +328,9 @@ class JumpData:
         self.after_jump_flag_dn2 = dn2
         self.after_jump_flag_n2 = n2
 
-    def set_snowball_info(self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge):
+    def set_snowball_info(self, levent, mjarea, msarea, exfact, require, satrad, satexp, edge,
+                          write_saturated_cores, mask_persist_grps_next_int,
+                          detector_name, exp_start_time, exp_stop_time, file_dir):
         """
         Set class instance values needed for snowball handling.
 
@@ -340,7 +347,7 @@ class JumpData:
             The minimum area of saturated pixels within the jump circle to trigger
             the creation of a snowball.
 
-        expfact : float
+        exfact : float
             The factor that increases the size of the snowball or enclosing ellipse.
 
         require : bool
@@ -358,6 +365,20 @@ class JumpData:
         edge : int
             The distance from the edge of the detector where saturated cores are not
             required for snowball detection
+
+        write_saturated_cores : bool
+            Do we write saturated cores to disk?
+
+        detector_name : str
+
+        mask_persist_grps_next_int : bool
+
+        exp_start_time: str
+
+        exp_stop_time: str
+
+        file_dir: str
+
         """
         self.expand_large_events = levent
         self.min_jump_area = mjarea
@@ -373,7 +394,9 @@ class JumpData:
         self.exp_start_time = exp_start_time
         self.exp_stop_time = exp_stop_time
         self.file_dir = file_dir
-
+        self.ratio_sat_expand = 2.0
+        print("file directory", self.file_dir)
+        print("satexp", self.sat_expand)
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
         """
         Set class instance values needed for shower handling.

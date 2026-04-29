@@ -425,14 +425,19 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
     """
     ngroups, nrows, ncols = cube.shape
     satcolor = 22  # (0, 0, 22) is a dark blue in RGB
+    print("inside extend_saturation, sat_expand", jump_data.sat_expand)
+    print("inside extend_saturation, min_sat_radius_expand", jump_data.min_sat_radius_extend)
+    print("inside extend_saturation, max_extended_width", jump_data.max_extended_width)
     for ellipse in sat_ellipses:
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
         minor_axis = min(ellipse[1][1], ellipse[1][0])
 
         if minor_axis > jump_data.min_sat_radius_extend:
-            axis1 = ellipse[1][0] + jump_data.sat_expand
-            axis2 = ellipse[1][1] + jump_data.sat_expand
+#            axis1 = ellipse[1][0] + jump_data.sat_expand
+#            axis2 = ellipse[1][1] + jump_data.sat_expand
+            axis1 = max(ellipse[1][0] + jump_data.sat_expand, (ellipse[1][0] + 1) * jump_data.ratio_sat_expand)
+            axis2 = max(ellipse[1][1] + jump_data.sat_expand, (ellipse[1][1] + 1) * jump_data.ratio_sat_expand)
             axis1 = min(axis1, jump_data.max_extended_width)
             axis2 = min(axis2, jump_data.max_extended_width)
 
