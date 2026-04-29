@@ -66,7 +66,7 @@ def detect_jumps_data(jump_data):
     """
     sat, jump, dnu = jump_data.fl_sat, jump_data.fl_jump, jump_data.fl_dnu
     number_extended_events = 0
-
+    print("Running Jump")
     pdq = setup_pdq(jump_data)
 
     # Apply gain to the SCI and readnoise arrays so they're in units
@@ -423,11 +423,9 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
     persist_jumps : ndarray
         3D (nints, nrows, ncols) uint8
     """
+    print("ratio_sat_expand ", jump_data.ratio_sat_expand)
     ngroups, nrows, ncols = cube.shape
     satcolor = 22  # (0, 0, 22) is a dark blue in RGB
-    print("inside extend_saturation, sat_expand", jump_data.sat_expand)
-    print("inside extend_saturation, min_sat_radius_expand", jump_data.min_sat_radius_extend)
-    print("inside extend_saturation, max_extended_width", jump_data.max_extended_width)
     for ellipse in sat_ellipses:
         ceny = ellipse[0][0]
         cenx = ellipse[0][1]
