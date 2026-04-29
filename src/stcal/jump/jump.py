@@ -408,6 +408,16 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
+    if jump_data.write_saturated_cores:
+        log.info("Writing snowball cores")
+        print("Writing snowball cores")
+        print("file_dir", jump_data.file_dir)
+        out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
+                     "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
+        print('out saturated cores name = ' + jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
+              "_saturated_cores.fits")
+
     return gdq[:, 1:, :, :], total_snowballs
 
 
