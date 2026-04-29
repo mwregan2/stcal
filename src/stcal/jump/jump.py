@@ -9,7 +9,8 @@ import logging
 import multiprocessing
 import time
 import warnings
-
+from astropy.io import fits
+from glob import glob
 import astropy.stats as stats
 import numpy as np
 import skimage
@@ -304,7 +305,7 @@ def setup_pdq(jump_data):
     return pdq
 
 
-def flag_large_events(gdq, jump_flag, sat_flag, jump_data):
+def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
     """
     Control the creation of expanded regions that are flagged as jumps.
 
@@ -331,17 +332,14 @@ def flag_large_events(gdq, jump_flag, sat_flag, jump_data):
 
     n_showers_grp = []
     total_snowballs = 0
-    nints, ngrps, nrows, ncols = gdq.shape
+    nints, ngrps, nrows, ncols = in_gdq.shape
     persist_jumps = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint8)
     if jump_data.mask_persist_grps_next_int:
-        print("masking persist in next grps")
-        last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
+         last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
     else:
         gdq2 = in_gdq
     if jump_data.write_saturated_cores:
-        print("writing saturated cores")
         log.info("Writing snowball cores")
-        #        last_grp_sat = (np.bitwise_and(gdq2[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
         # If the saturation mask exists, read the saturation mask and update the gdq
         gdq = flag_previous_saturation(gdq2, str(jump_data.exp_start_time),
                                        jump_data.detector_name, jump_data.file_dir)
@@ -1345,3 +1343,57 @@ def _sk_filter_areas(image, threshold):
             ((float(region.centroid[1]), float(region.centroid[0])), (h, w), np.degrees(region.orientation))
         )
     return min_areas
+def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, saturation_mask_window=120):
+    print("inside flag_previous_saturation")
+    today_search = file_dir + str(round(float(start_time))) + "*" + detector_name + "*"
+    print("flag previous saturation", today_search)
+    print("file_dir", file_dir)
+    print("start time of exp", start_time)
+    today_files = glob(today_search + "*")
+    yesterday_search = file_dir + str(round(float(start_time) - 1)) + "*" + detector_name + "*"
+    yesterday_files = glob(yesterday_search + "*")
+    all_files = (yesterday_files + today_files)
+    print("all_files", all_files)
+    delta_times = []
+    good_files = []
+    for full_file in all_files:
+        file = full_file.removeprefix(file_dir)
+        file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
+        delta_time_min = (float(start_time) - file_time) * 1440.
+        print('start time', start_time, 'delta time', delta_time_min)
+        if delta_time_min > 0 and (delta_time_min < saturation_mask_window):
+            delta_times.append(delta_time_min)
+            good_files.append(file)
+    print("good files", good_files)
+    if len(good_files) > 0:
+        index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
+        print('index_of_closest_file', index_of_closest_file)
+        saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
+        print("saturation file name ", good_files[index_of_closest_file])
+        new_gdq = in_gdq.copy()
+        # only mask the first integration
+        fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)
+        new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
+        fits.writeto('new_gdq.fits', new_gdq, overwrite=True)
+        return new_gdq
+    else:
+        return in_gdq
+
+
+def flag_sat_in_exposure(in_gdq, sat_flag):
+    #  Find the saturated pixels at the end of each integration and or them to all groups in the next integration
+    #  Optimal implementation should have more flexibility
+    nints, ngrps, nrows, ncols = in_gdq.shape
+    out_gdq = in_gdq.copy()
+    start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
+    last_grp_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
+    for intg in range(nints):
+        last_grp_sat[intg, :, :] = np.bitwise_and(in_gdq[intg, -1, :, :], sat_flag)
+        if intg > 0:
+            #start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
+            out_gdq[intg:, :, :, :] = np.bitwise_or(in_gdq[intg:, :, :, :], last_grp_sat[intg - 1, np.newaxis, :, :])
+
+    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
+#    fits.writeto("last_grp_sat.fits", last_grp_sat, overwrite=True)
+#    fits.writeto("exposure_out_gdq.fits", out_gdq.astype(int), overwrite=True)
+    return last_grp_sat[-1, :, :], out_gdq
