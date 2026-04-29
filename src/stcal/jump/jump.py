@@ -333,6 +333,20 @@ def flag_large_events(gdq, jump_flag, sat_flag, jump_data):
     total_snowballs = 0
     nints, ngrps, nrows, ncols = gdq.shape
     persist_jumps = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint8)
+    if jump_data.mask_persist_grps_next_int:
+        print("masking persist in next grps")
+        last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
+    else:
+        gdq2 = in_gdq
+    if jump_data.write_saturated_cores:
+        print("writing saturated cores")
+        log.info("Writing snowball cores")
+        #        last_grp_sat = (np.bitwise_and(gdq2[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        # If the saturation mask exists, read the saturation mask and update the gdq
+        gdq = flag_previous_saturation(gdq2, str(jump_data.exp_start_time),
+                                       jump_data.detector_name, jump_data.file_dir)
+    else:
+        gdq = gdq2
     for integration in range(nints):
         for group in range(1, ngrps):
             current_gdq = gdq[integration, group, :, :]
