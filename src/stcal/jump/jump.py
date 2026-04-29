@@ -305,7 +305,7 @@ def setup_pdq(jump_data):
     return pdq
 
 
-def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
+def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
     """
     Control the creation of expanded regions that are flagged as jumps.
 
@@ -332,7 +332,12 @@ def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
 
     n_showers_grp = []
     total_snowballs = 0
-    nints, ngrps, nrows, ncols = in_gdq.shape
+    nints, ngrps, nrows, ncols = base_gdq.shape
+    if nints > 1:
+        second_last_int_last_dq_plane = base_gdq[-2, -1, :, :]
+    # add a blank first group to allow snowballs in the first group to be detected
+    new_plane_4d = np.zeros((nints, 1, nrows, ncols), dtype=np.uint8)
+    in_gdq = np.concatenate((new_plane_4d, base_gdq), axis=1)
     persist_jumps = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint8)
     if jump_data.mask_persist_grps_next_int:
          last_grp_sat, gdq2 = flag_sat_in_exposure(in_gdq, sat_flag)
@@ -403,7 +408,7 @@ def flag_large_events(in_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
-    return gdq, total_snowballs
+    return gdq[:, 1:, :, :], total_snowballs
 
 
 def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
