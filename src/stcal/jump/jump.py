@@ -1377,9 +1377,9 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
         print("saturation file name ", good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
         # only mask the first integration
-        fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)
+ #       fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)
         new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
-        fits.writeto('new_gdq.fits', new_gdq, overwrite=True)
+#        fits.writeto('new_gdq.fits', new_gdq, overwrite=True)
         return new_gdq
     else:
         return in_gdq
@@ -1398,7 +1398,7 @@ def flag_sat_in_exposure(in_gdq, sat_flag):
             #start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
             out_gdq[intg:, :, :, :] = np.bitwise_or(in_gdq[intg:, :, :, :], last_grp_sat[intg - 1, np.newaxis, :, :])
 
-    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
+#    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
 #    fits.writeto("last_grp_sat.fits", last_grp_sat, overwrite=True)
 #    fits.writeto("exposure_out_gdq.fits", out_gdq.astype(int), overwrite=True)
     return last_grp_sat[-1, :, :], out_gdq
