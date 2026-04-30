@@ -68,6 +68,7 @@ def detect_jumps_data(jump_data):
     sat, jump, dnu = jump_data.fl_sat, jump_data.fl_jump, jump_data.fl_dnu
     number_extended_events = 0
     print("Running Jump")
+    print("min sat radius extend", jump_data.min_sat_radius_extend)
     pdq = setup_pdq(jump_data)
 
     # Apply gain to the SCI and readnoise arrays so they're in units
