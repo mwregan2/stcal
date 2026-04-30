@@ -204,10 +204,12 @@ def run_jump_detection(
     # Test to see if all groups are uniform and if there are enough
     # groups to use sigma clipping
     if check_sigma_clip_groups(nints, total_groups, twopt_p):
+        print('check_sigma_clip_groups passed')
         gdq = det_jump_sigma_clipping(
             gdq, nints, ngroups, total_groups, first_diffs_finite, first_diffs, twopt_p
         )
     else:  # There are not enough groups for sigma clipping
+        print('not enough groups for sigma clipping')
         if min_usable_diffs >= twopt_p.min_diffs_single_pass:
             gdq = look_for_more_than_one_jump(
                 gdq, nints, first_diffs, median_diffs, sigma, first_diffs_finite, twopt_p
@@ -425,6 +427,7 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
     gdq : ndarray
         Flagged group DQ array.
     """
+    print("inside det_jump_sigma_clipping")
     log.info(
         f" Jump Step using sigma clip {str(total_groups)} greater than "
         f"{str(twopt_p.minimum_sigclip_groups)}, rejection threshold {str(twopt_p.normal_rej_thresh)}"
@@ -436,6 +439,9 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
         warnings.filterwarnings("ignore", ".*Input data contains invalid values*", AstropyUserWarning)
 
         axis = 0 if twopt_p.only_use_ints else (0, 1)
+        print('axis ', axis)
+        print('first_diffs.shape ', first_diffs.shape)
+        print('twopt_p.normal_rej_thresh ', twopt_p.normal_rej_thresh)
         clipped_diffs, allow, ahigh = stats.sigma_clip(
             first_diffs, sigma=twopt_p.normal_rej_thresh, axis=axis, masked=True, return_bounds=True
         )
@@ -485,6 +491,8 @@ def check_sigma_clip_groups(nints, total_groups, twopt_p):
 
     test1 = twopt_p.only_use_ints and nints >= twopt_p.minimum_sigclip_groups
     test2 = not twopt_p.only_use_ints and total_groups >= twopt_p.minimum_sigclip_groups
+    print('test1', test1)
+    print('test2', test2)
     return test1 or test2
 
 
