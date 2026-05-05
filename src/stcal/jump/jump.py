@@ -351,7 +351,7 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                                        jump_data.detector_name, jump_data.file_dir)
     else:
         gdq = gdq2
-    print("sat expand", jump_data.sat_expand)
+    fits.writeto("in_gdq.fits", gdq, overwrite=True)
     for integration in range(nints):
         for group in range(1, ngrps):
             current_gdq = gdq[integration, group, :, :]
@@ -410,10 +410,9 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
+        print("Mask persist grps = " + str(jump_data.mask_persist_grps_next_int))
     if jump_data.write_saturated_cores:
         log.info("Writing snowball cores")
-#        print("Writing snowball cores")
-#        print("file_dir", jump_data.file_dir)
         out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
@@ -452,8 +451,6 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
     persist_jumps : ndarray
         3D (nints, nrows, ncols) uint8
     """
-    print("ratio_sat_expand ", jump_data.ratio_sat_expand)
-    print("sat_expand ", jump_data.sat_expand)
     ngroups, nrows, ncols = cube.shape
     satcolor = 22  # (0, 0, 22) is a dark blue in RGB
     for ellipse in sat_ellipses:
@@ -1371,7 +1368,7 @@ def _sk_filter_areas(image, threshold):
     return min_areas
 def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, saturation_mask_window=120):
     today_search = file_dir + str(round(float(start_time))) + "*" + detector_name + "*"
-#    print("flag previous saturation", today_search)
+    print("flag previous saturation", today_search)
 #    print("file_dir", file_dir)
 #    print("start time of exp", start_time)
     today_files = glob(today_search + "*")
@@ -1410,6 +1407,7 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
 def flag_sat_in_exposure(in_gdq, sat_flag):
     #  Find the saturated pixels at the end of each integration and or them to all groups in the next integration
     #  Optimal implementation should have more flexibility
+    print("flag sat in exposure", sat_flag)
     nints, ngrps, nrows, ncols = in_gdq.shape
     out_gdq = in_gdq.copy()
     start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
