@@ -368,7 +368,6 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                 next_sat = np.bitwise_and(next_gdq, sat_flag)
                 not_current_sat = np.logical_not(current_sat)
                 next_new_sat = next_sat * not_current_sat
-#            print("min sat area", jump_data.min_sat_area)
             next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, jump_data.min_sat_area)
             sat_ellipses = find_ellipses(new_sat, sat_flag, jump_data.min_sat_area, dq=2, intg=integration, grp=group)
 
@@ -411,7 +410,6 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
-        print("Mask persist grps = " + str(jump_data.mask_persist_grps_next_int))
         fits.writeto("persist_jumps.fits", persist_jumps, overwrite=True)
         fits.writeto("updated_gdq.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
@@ -463,6 +461,7 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
         minor_axis = min(ellipse[1][1], ellipse[1][0])
 
         if minor_axis > jump_data.min_sat_radius_extend:
+            print(" incoming saturated ellipse", ellipse[1][0], ellipse[1][1])
 #            print(" extending saturated ellipse", ellipse[1][0], ellipse[1][1])
 #            axis1 = ellipse[1][0] + jump_data.sat_expand
 #            axis2 = ellipse[1][1] + jump_data.sat_expand
@@ -472,12 +471,12 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
             axis2 = max(ellipse[1][1] + jump_data.sat_expand, ellipse[1][1] * jump_data.ratio_sat_expand)
             axis1 = min(axis1, jump_data.max_extended_width)
             axis2 = min(axis2, jump_data.max_extended_width)
-#            print(" new saturated ellipse", axis1, axis2, ellipse[0][0], ellipse[0][1])
+            print(" new saturated ellipse expected", axis1, axis2, ellipse[1][0], ellipse[1][1])
             alpha = ellipse[2]
 
             indx, sat_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, satcolor, (nrows, ncols))
             (iy1, iy2, ix1, ix2) = indx
-
+            print("indx ", indx, "sat_ellipse", sat_ellipse)
             # Create another non-extended ellipse that is used to
             # create the persist_jumps for this integration. This
             # will be used to mask groups in subsequent integrations.
@@ -531,7 +530,7 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     # How big of a subarray do we need for the subimage?
 
     dn_over_2 = max(round(axis1 / 2), round(axis2 / 2)) + 2
-
+    print("rounded axes", (round(axis1 / 2), round(axis2 / 2)))
     # Note that the convention between which index is x and which
     # is y is a little confusing here.  For ellipse, the first
     # coordinate corresponds to the second Python index.  That is
@@ -541,10 +540,10 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     ix2 = min(yc + dn_over_2 + 1, shape[1])
     iy1 = max(xc - dn_over_2, 0)
     iy2 = min(xc + dn_over_2 + 1, shape[0])
-
+    print("ix1", ix1, "ix2", ix2, "iy1", iy1, "iy2", iy2)
     image = np.zeros(shape=(iy2 - iy1, ix2 - ix1), dtype=np.uint8)
     saty, satx = _sk_ellipse(
-        (iy2 - iy1, ix2 - ix1), (yc - ix1, xc - iy1), (round(axis1 / 2), round(axis2 / 2)), alpha
+        (iy2 - iy1, ix2 - ix1), (yc - ix1, xc - iy1), (round(axis1 / 2) + 1, round(axis2 / 2) + 1), alpha
     )
     image[saty, satx] = value
 
@@ -615,6 +614,7 @@ def extend_ellipses(
         # indices that place this subimage within the full array.
         axis1 = axes[0] * 2
         axis2 = axes[1] * 2
+        print("inside extend ellipse", "axis1", axis1, "axis2", axis2)
         indx, jump_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, jump_data.fl_jump, (nrows, ncols))
         (iy1, iy2, ix1, ix2) = indx
 
@@ -1317,6 +1317,7 @@ def _sk_ellipse(shape, center, axes, angle):
     """
     if axes[1] == 0 or axes[0] == 0:
         return [], []
+    print("draw.ellipse", center[1], center[0], axes[1], axes[0], shape, angle)
     return skimage.draw.ellipse(
         center[1],
         center[0],
@@ -1352,9 +1353,10 @@ def _sk_filter_areas(image, threshold, dq=0, integration=0, grp=0):
     """
     lim, num_labels = skimage.measure.label(image, return_num=True)
     min_areas = []
-    if dq == 2:
-        fits.writeto("image_labeled_"+str(integration)+"_"+str(grp)+".fits", lim, overwrite=True)
-        fits.writeto("image" + str(integration) + "_" + str(grp) + ".fits", image, overwrite=True)
+#    print(integration, grp)
+#    if dq == 2:
+#        fits.writeto("image_labeled_"+str(integration)+"_"+str(grp)+".fits", lim, overwrite=True)
+#        fits.writeto("image" + str(integration) + "_" + str(grp) + ".fits", image, overwrite=True)
 #    print("num labels", num_labels)
     for region in skimage.measure.regionprops(lim):
 #        print(" area max", region.area_filled, region.centroid[1], region.centroid[0])
