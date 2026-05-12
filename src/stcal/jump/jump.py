@@ -345,13 +345,14 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
     else:
         gdq2 = in_gdq
     if jump_data.write_saturated_cores:
-        log.info("Writing snowball cores")
+        log.info("Applying previous snowball cores")
         # If the saturation mask exists, read the saturation mask and update the gdq
         gdq = flag_previous_saturation(gdq2, str(jump_data.exp_start_time),
                                        jump_data.detector_name, jump_data.file_dir)
     else:
         gdq = gdq2
     fits.writeto("in_gdq.fits", gdq, overwrite=True)
+    saved_gdq = gdq
     for integration in range(nints):
         for group in range(1, ngrps):
             current_gdq = gdq[integration, group, :, :]
@@ -369,7 +370,7 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                 next_new_sat = next_sat * not_current_sat
 #            print("min sat area", jump_data.min_sat_area)
             next_sat_ellipses = find_ellipses(next_new_sat, sat_flag, jump_data.min_sat_area)
-            sat_ellipses = find_ellipses(new_sat, sat_flag, jump_data.min_sat_area)
+            sat_ellipses = find_ellipses(new_sat, sat_flag, jump_data.min_sat_area, dq=2, intg=integration, grp=group)
 
             # find the ellipse parameters for jump regions
             jump_ellipses = find_ellipses(gdq[integration, group, :, :], jump_flag, jump_data.min_jump_area)
@@ -411,9 +412,12 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
         print("Mask persist grps = " + str(jump_data.mask_persist_grps_next_int))
+        fits.writeto("persist_jumps.fits", persist_jumps, overwrite=True)
+        fits.writeto("updated_gdq.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
-        log.info("Writing snowball cores")
-        out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        log.info("Writing current snowball cores")
+        out_flagged_jumps = (np.bitwise_and(base_gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        fits.writeto("saved_based_gdq.fits", base_gdq, overwrite=True)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
 #        print('out saturated cores name = ' + jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
@@ -626,7 +630,7 @@ def extend_ellipses(
     return gdq_cube, num_ellipses
 
 
-def find_ellipses(dqplane, bitmask, min_area):
+def find_ellipses(dqplane, bitmask, min_area, dq=0, intg=0, grp=0):
     """
     Find ellipses based on DQ masks in bitmask.
 
@@ -650,7 +654,7 @@ def find_ellipses(dqplane, bitmask, min_area):
     # at least the minimum
     # area and return a list of the minimum enclosing ellipse parameters.
     pixels = np.bitwise_and(dqplane, bitmask) if bitmask is not None else dqplane
-    return _sk_filter_areas(pixels, min_area)
+    return _sk_filter_areas(pixels, min_area, dq, intg, grp)
 
 
 def make_snowballs(
@@ -1098,7 +1102,6 @@ def get_bigellipses(ratio, intg, grp, gdq, pdq, jump_data, ring_2D_kernel):  # n
     #  find the contours of the extended emission
     return _sk_filter_areas(extended_emission, jump_data.extend_min_area)
 
-
 def convolve_fast(inarray, kernel, copy=False):
     """
     Convolve an array with a kernel, interpolating over NaNs.
@@ -1324,7 +1327,7 @@ def _sk_ellipse(shape, center, axes, angle):
     )
 
 
-def _sk_filter_areas(image, threshold):
+def _sk_filter_areas(image, threshold, dq=0, integration=0, grp=0):
     """
     Find contiguous areas larger than some threshold.
 
@@ -1349,6 +1352,9 @@ def _sk_filter_areas(image, threshold):
     """
     lim, num_labels = skimage.measure.label(image, return_num=True)
     min_areas = []
+    if dq == 2:
+        fits.writeto("image_labeled_"+str(integration)+"_"+str(grp)+".fits", lim, overwrite=True)
+        fits.writeto("image" + str(integration) + "_" + str(grp) + ".fits", image, overwrite=True)
 #    print("num labels", num_labels)
     for region in skimage.measure.regionprops(lim):
 #        print(" area max", region.area_filled, region.centroid[1], region.centroid[0])
@@ -1359,8 +1365,14 @@ def _sk_filter_areas(image, threshold):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html#measure-region-properties
 #        w = region.axis_major_length - 1
 #        h = region.axis_minor_length - 1
-        w = region.axis_major_length + 1
-        h = region.axis_minor_length + 1
+        if region.axis_major_length == 0:
+            w = region.axis_major_length + 1
+        else:
+            w = region.axis_major_length
+        if region.axis_minor_length == 0:
+            h = region.axis_minor_length + 1
+        else:
+            h = region.axis_minor_length
 #        print("after threshold test", w, h, region.area_filled, region.centroid[1], region.centroid[0])
         min_areas.append(
             ((float(region.centroid[1]), float(region.centroid[0])), (h, w), np.degrees(region.orientation))
