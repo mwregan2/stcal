@@ -537,6 +537,8 @@ def flag_four_neighbors(
             if i == 0 and j == 24:
                 fits.writeto("diff_ratio.fits", ratio, overwrite=True)
             jump_set = gdq[i, j + 1] & twopt_p.fl_jump != 0
+            # For all pixels set flag to True if the ratio is within the range of flagging neighbors
+            # and the pixel has a gdq of Jump set.
             flag = (
                 (ratio < twopt_p.max_jump_to_flag_neighbors)
                 & (ratio > twopt_p.min_jump_to_flag_neighbors)
@@ -552,7 +554,9 @@ def flag_four_neighbors(
             flag[:-1] |= flagsave[1:]
             flag[:, 1:] |= flagsave[:, :-1]
             flag[:, :-1] |= flagsave[:, 1:]
+            # set sat_or_dnu_notset to True when the dq values in the next group are not set to sat or dnu
             sat_or_dnu_notset = gdq[i, j + 1] & (twopt_p.fl_sat | twopt_p.fl_dnu) == 0
+            # set the gdq in the next group for pixels that have sat_or_dnu_notset set to True
             gdq[i, j + 1][sat_or_dnu_notset & flag] |= twopt_p.fl_jump
             row_below_gdq[i, j + 1][flagsave[0]] = twopt_p.fl_jump
             row_above_gdq[i, j + 1][flagsave[-1]] = twopt_p.fl_jump
