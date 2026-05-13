@@ -462,13 +462,10 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
 
         if minor_axis > jump_data.min_sat_radius_extend:
             print(" incoming saturated ellipse", ellipse[1][0], ellipse[1][1])
-#            print(" extending saturated ellipse", ellipse[1][0], ellipse[1][1])
-#            axis1 = ellipse[1][0] + jump_data.sat_expand
-#            axis2 = ellipse[1][1] + jump_data.sat_expand
-#            axis1 = max(ellipse[1][0] + jump_data.sat_expand, (ellipse[1][0] + 1) * jump_data.ratio_sat_expand)
-#            axis2 = max(ellipse[1][1] + jump_data.sat_expand, (ellipse[1][1] + 1) * jump_data.ratio_sat_expand)
-            axis1 = max(ellipse[1][0] + jump_data.sat_expand, ellipse[1][0] * jump_data.ratio_sat_expand)
-            axis2 = max(ellipse[1][1] + jump_data.sat_expand, ellipse[1][1] * jump_data.ratio_sat_expand)
+
+            # Note that sat_expand is the increase in the radius, so we double sat_expand
+            axis1 = max(ellipse[1][0] + jump_data.sat_expand * 2, ellipse[1][0] * jump_data.ratio_sat_expand)
+            axis2 = max(ellipse[1][1] + jump_data.sat_expand * 2, ellipse[1][1] * jump_data.ratio_sat_expand)
             axis1 = min(axis1, jump_data.max_extended_width)
             axis2 = min(axis2, jump_data.max_extended_width)
             print(" new saturated ellipse expected", axis1, axis2, ellipse[1][0], ellipse[1][1])
