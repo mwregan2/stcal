@@ -442,8 +442,13 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
 
         # get the standard deviation from the bounds of sigma clipping
         jump_candidates = clipped_diffs.mask
+        fits.writeto("jump_candidates.fits", jump_candidates.astype(int), overwrite=True)
         sat_or_dnu_not_set = gdq[:, 1:] & (twopt_p.fl_sat | twopt_p.fl_dnu) == 0
+        fits.writeto("gdq_sig_clip.fits", gdq.astype(int), overwrite=True)
         jump_mask = jump_candidates & first_diffs_finite & sat_or_dnu_not_set
+        fits.writeto("sat_or_nu_not_set.fits", sat_or_dnu_not_set.astype(int), overwrite=True)
+        fits.writeto("first_diffs_finite.fits", first_diffs_finite.astype(int), overwrite=True)
+        fits.writeto("jump_mask.fits", jump_mask.astype(int), overwrite=True)
         del clipped_diffs
         gdq[:, 1:] |= jump_mask * np.uint8(twopt_p.fl_jump)
 
