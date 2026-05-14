@@ -394,7 +394,7 @@ class JumpData:
         self.exp_start_time = exp_start_time
         self.exp_stop_time = exp_stop_time
         self.file_dir = file_dir
-        self.ratio_sat_expand = 3.0
+        self.ratio_sat_expand = 2.0
     def set_shower_info(self, shower, snr, marea, inner, outer, expand, single, extend):
         """
         Set class instance values needed for shower handling.

@@ -461,19 +461,21 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
         minor_axis = min(ellipse[1][1], ellipse[1][0])
 
         if minor_axis > jump_data.min_sat_radius_extend:
-            print(" incoming saturated ellipse", ellipse[1][0], ellipse[1][1])
-
+ #           print(" incoming saturated ellipse", ellipse[1][0], ellipse[1][1])
+#            print(" add size 1", ellipse[1][0] + jump_data.sat_expand, "multiply ", ellipse[1][0] * jump_data.ratio_sat_expand)
+#            print(" add size 2", ellipse[1][1] + jump_data.sat_expand, "multiply ",
+#                  ellipse[1][1] * jump_data.ratio_sat_expand)
             # Note that sat_expand is the increase in the radius, so we double sat_expand
-            axis1 = max(ellipse[1][0] + jump_data.sat_expand * 2, ellipse[1][0] * jump_data.ratio_sat_expand)
-            axis2 = max(ellipse[1][1] + jump_data.sat_expand * 2, ellipse[1][1] * jump_data.ratio_sat_expand)
+            axis1 = max(ellipse[1][0] + jump_data.sat_expand, ellipse[1][0] * jump_data.ratio_sat_expand)
+            axis2 = max(ellipse[1][1] + jump_data.sat_expand, ellipse[1][1] * jump_data.ratio_sat_expand)
             axis1 = min(axis1, jump_data.max_extended_width)
             axis2 = min(axis2, jump_data.max_extended_width)
-            print(" new saturated ellipse expected", axis1, axis2, ellipse[1][0], ellipse[1][1])
+#            print(" new saturated ellipse expected", axis1, axis2, ellipse[1][0], ellipse[1][1])
             alpha = ellipse[2]
 
             indx, sat_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, satcolor, (nrows, ncols))
             (iy1, iy2, ix1, ix2) = indx
-            print("indx ", indx, "sat_ellipse", sat_ellipse)
+#            print("indx ", indx, "sat_ellipse", sat_ellipse)
             # Create another non-extended ellipse that is used to
             # create the persist_jumps for this integration. This
             # will be used to mask groups in subsequent integrations.
@@ -527,7 +529,7 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     # How big of a subarray do we need for the subimage?
 
     dn_over_2 = max(round(axis1 / 2), round(axis2 / 2)) + 2
-    print("rounded axes", (round(axis1 / 2), round(axis2 / 2)))
+#    print("rounded axes", (round(axis1 / 2), round(axis2 / 2)))
     # Note that the convention between which index is x and which
     # is y is a little confusing here.  For ellipse, the first
     # coordinate corresponds to the second Python index.  That is
@@ -537,7 +539,7 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     ix2 = min(yc + dn_over_2 + 1, shape[1])
     iy1 = max(xc - dn_over_2, 0)
     iy2 = min(xc + dn_over_2 + 1, shape[0])
-    print("ix1", ix1, "ix2", ix2, "iy1", iy1, "iy2", iy2)
+ #   print("ix1", ix1, "ix2", ix2, "iy1", iy1, "iy2", iy2)
     image = np.zeros(shape=(iy2 - iy1, ix2 - ix1), dtype=np.uint8)
     saty, satx = _sk_ellipse(
         (iy2 - iy1, ix2 - ix1), (yc - ix1, xc - iy1), (round(axis1 / 2) + 1, round(axis2 / 2) + 1), alpha
@@ -611,7 +613,7 @@ def extend_ellipses(
         # indices that place this subimage within the full array.
         axis1 = axes[0] * 2
         axis2 = axes[1] * 2
-        print("inside extend ellipse", "axis1", axis1, "axis2", axis2)
+#        print("inside extend ellipse", "axis1", axis1, "axis2", axis2)
         indx, jump_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, jump_data.fl_jump, (nrows, ncols))
         (iy1, iy2, ix1, ix2) = indx
 
@@ -1314,7 +1316,7 @@ def _sk_ellipse(shape, center, axes, angle):
     """
     if axes[1] == 0 or axes[0] == 0:
         return [], []
-    print("draw.ellipse", center[1], center[0], axes[1], axes[0], shape, angle)
+#   print("draw.ellipse", center[1], center[0], axes[1], axes[0], shape, angle)
     return skimage.draw.ellipse(
         center[1],
         center[0],

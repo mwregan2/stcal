@@ -534,17 +534,19 @@ def flag_four_neighbors(
                 sig = sigma[j]
 
             ratio = np.abs(first_diffs[i, j] - median_diffs) / sig
-            if i == 0 and j == 24:
+            if i == 0 and j == 2:
                 fits.writeto("diff_ratio.fits", ratio, overwrite=True)
+                print("twopt min", twopt_p.minimum_sigclip_groups)
             jump_set = gdq[i, j + 1] & twopt_p.fl_jump != 0
             # For all pixels set flag to True if the ratio is within the range of flagging neighbors
             # and the pixel has a gdq of Jump set.
             flag = (
                 (ratio < twopt_p.max_jump_to_flag_neighbors)
                 & (ratio > twopt_p.min_jump_to_flag_neighbors)
-                & (jump_set)
+            # including jump_set prevents some pixels from being masked correctly
+#                & (jump_set)
             )
-            if i == 0 and j == 24:
+            if i == 0 and j == 2:
                 fits.writeto("ratio_set.fits", ratio, overwrite=True)
                 fits.writeto("jump_set.fits", jump_set.astype(int), overwrite=True)
                 fits.writeto("flag_set.fits", flag.astype(int), overwrite=True)
