@@ -484,6 +484,7 @@ def check_sigma_clip_groups(nints, total_groups, twopt_p):
 
     test1 = twopt_p.only_use_ints and nints >= twopt_p.minimum_sigclip_groups
     test2 = not twopt_p.only_use_ints and total_groups >= twopt_p.minimum_sigclip_groups
+    print("test1", int(test1), "test2", int(test2))
     return test1 or test2
 
 
