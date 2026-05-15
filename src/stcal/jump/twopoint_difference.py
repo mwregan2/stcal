@@ -4,7 +4,6 @@ import warnings
 import numpy as np
 from astropy import stats
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.io import fits
 log = logging.getLogger(__name__)
 
 
@@ -442,13 +441,8 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
 
         # get the standard deviation from the bounds of sigma clipping
         jump_candidates = clipped_diffs.mask
-        fits.writeto("jump_candidates.fits", jump_candidates.astype(int), overwrite=True)
         sat_or_dnu_not_set = gdq[:, 1:] & (twopt_p.fl_sat | twopt_p.fl_dnu) == 0
-        fits.writeto("gdq_sig_clip.fits", gdq.astype(int), overwrite=True)
         jump_mask = jump_candidates & first_diffs_finite & sat_or_dnu_not_set
-        fits.writeto("sat_or_nu_not_set.fits", sat_or_dnu_not_set.astype(int), overwrite=True)
-        fits.writeto("first_diffs_finite.fits", first_diffs_finite.astype(int), overwrite=True)
-        fits.writeto("jump_mask.fits", jump_mask.astype(int), overwrite=True)
         del clipped_diffs
         gdq[:, 1:] |= jump_mask * np.uint8(twopt_p.fl_jump)
 
@@ -539,10 +533,6 @@ def flag_four_neighbors(
                 sig = sigma[j]
 
             ratio = np.abs(first_diffs[i, j] - median_diffs) / sig
-            if i == 0 and j == 2:
-                fits.writeto("diff_ratio.fits", ratio, overwrite=True)
-                print("twopt min", twopt_p.minimum_sigclip_groups)
-            jump_set = gdq[i, j + 1] & twopt_p.fl_jump != 0
             # For all pixels set flag to True if the ratio is within the range of flagging neighbors
             # and the pixel has a gdq of Jump set.
             flag = (
@@ -551,10 +541,6 @@ def flag_four_neighbors(
             # including jump_set prevents some pixels from being masked correctly
 #                & (jump_set)
             )
-            if i == 0 and j == 2:
-                fits.writeto("ratio_set.fits", ratio, overwrite=True)
-                fits.writeto("jump_set.fits", jump_set.astype(int), overwrite=True)
-                fits.writeto("flag_set.fits", flag.astype(int), overwrite=True)
             # Dilate the flag by one pixel in each direction.
             flagsave = flag.copy()
             flag[1:] |= flagsave[:-1]

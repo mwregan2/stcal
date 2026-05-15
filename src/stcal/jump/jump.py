@@ -67,8 +67,6 @@ def detect_jumps_data(jump_data):
     """
     sat, jump, dnu = jump_data.fl_sat, jump_data.fl_jump, jump_data.fl_dnu
     number_extended_events = 0
-#    print("Running Jump")
-#    print("min sat radius extend", jump_data.min_sat_radius_extend)
     pdq = setup_pdq(jump_data)
 
     # Apply gain to the SCI and readnoise arrays so they're in units
@@ -351,7 +349,6 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                                        jump_data.detector_name, jump_data.file_dir)
     else:
         gdq = gdq2
-    fits.writeto("in_gdq.fits", gdq, overwrite=True)
     saved_gdq = gdq
     for integration in range(nints):
         for group in range(1, ngrps):
@@ -410,16 +407,12 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
-        fits.writeto("persist_jumps.fits", persist_jumps, overwrite=True)
-        fits.writeto("updated_gdq.fits", gdq, overwrite=True)
+
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
         out_flagged_jumps = (np.bitwise_and(base_gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
-        fits.writeto("saved_based_gdq.fits", base_gdq, overwrite=True)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
-#        print('out saturated cores name = ' + jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
-#              "_saturated_cores.fits")
 
     return gdq[:, 1:, :, :], total_snowballs
 
@@ -461,21 +454,14 @@ def extend_saturation(cube, grp, sat_ellipses, jump_data, persist_jumps):
         minor_axis = min(ellipse[1][1], ellipse[1][0])
 
         if minor_axis > jump_data.min_sat_radius_extend:
- #           print(" incoming saturated ellipse", ellipse[1][0], ellipse[1][1])
-#            print(" add size 1", ellipse[1][0] + jump_data.sat_expand, "multiply ", ellipse[1][0] * jump_data.ratio_sat_expand)
-#            print(" add size 2", ellipse[1][1] + jump_data.sat_expand, "multiply ",
-#                  ellipse[1][1] * jump_data.ratio_sat_expand)
-            # Note that sat_expand is the increase in the radius, so we double sat_expand
             axis1 = max(ellipse[1][0] + jump_data.sat_expand, ellipse[1][0] * jump_data.ratio_sat_expand)
             axis2 = max(ellipse[1][1] + jump_data.sat_expand, ellipse[1][1] * jump_data.ratio_sat_expand)
             axis1 = min(axis1, jump_data.max_extended_width)
             axis2 = min(axis2, jump_data.max_extended_width)
-#            print(" new saturated ellipse expected", axis1, axis2, ellipse[1][0], ellipse[1][1])
             alpha = ellipse[2]
 
             indx, sat_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, satcolor, (nrows, ncols))
             (iy1, iy2, ix1, ix2) = indx
-#            print("indx ", indx, "sat_ellipse", sat_ellipse)
             # Create another non-extended ellipse that is used to
             # create the persist_jumps for this integration. This
             # will be used to mask groups in subsequent integrations.
@@ -529,7 +515,6 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     # How big of a subarray do we need for the subimage?
 
     dn_over_2 = max(round(axis1 / 2), round(axis2 / 2)) + 2
-#    print("rounded axes", (round(axis1 / 2), round(axis2 / 2)))
     # Note that the convention between which index is x and which
     # is y is a little confusing here.  For ellipse, the first
     # coordinate corresponds to the second Python index.  That is
@@ -539,7 +524,6 @@ def ellipse_subim(ceny, cenx, axis1, axis2, alpha, value, shape):
     ix2 = min(yc + dn_over_2 + 1, shape[1])
     iy1 = max(xc - dn_over_2, 0)
     iy2 = min(xc + dn_over_2 + 1, shape[0])
- #   print("ix1", ix1, "ix2", ix2, "iy1", iy1, "iy2", iy2)
     image = np.zeros(shape=(iy2 - iy1, ix2 - ix1), dtype=np.uint8)
     saty, satx = _sk_ellipse(
         (iy2 - iy1, ix2 - ix1), (yc - ix1, xc - iy1), (round(axis1 / 2) + 1, round(axis2 / 2) + 1), alpha
@@ -613,7 +597,6 @@ def extend_ellipses(
         # indices that place this subimage within the full array.
         axis1 = axes[0] * 2
         axis2 = axes[1] * 2
-#        print("inside extend ellipse", "axis1", axis1, "axis2", axis2)
         indx, jump_ellipse = ellipse_subim(ceny, cenx, axis1, axis2, alpha, jump_data.fl_jump, (nrows, ncols))
         (iy1, iy2, ix1, ix2) = indx
 
@@ -1316,7 +1299,6 @@ def _sk_ellipse(shape, center, axes, angle):
     """
     if axes[1] == 0 or axes[0] == 0:
         return [], []
-#   print("draw.ellipse", center[1], center[0], axes[1], axes[0], shape, angle)
     return skimage.draw.ellipse(
         center[1],
         center[0],
@@ -1352,20 +1334,17 @@ def _sk_filter_areas(image, threshold, dq=0, integration=0, grp=0):
     """
     lim, num_labels = skimage.measure.label(image, return_num=True)
     min_areas = []
-#    print(integration, grp)
-#    if dq == 2:
-#        fits.writeto("image_labeled_"+str(integration)+"_"+str(grp)+".fits", lim, overwrite=True)
-#        fits.writeto("image" + str(integration) + "_" + str(grp) + ".fits", image, overwrite=True)
-#    print("num labels", num_labels)
+
     for region in skimage.measure.regionprops(lim):
-#        print(" area max", region.area_filled, region.centroid[1], region.centroid[0])
         if region.area_filled < threshold:
             continue
         # Wait until after area check so calculating the more expensive
         # region properties is only done for areas that pass threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html#measure-region-properties
-#        w = region.axis_major_length - 1
-#        h = region.axis_minor_length - 1
+
+        # Note that if the length of either axis is 1, the skimage region will set the length to 0.
+        # So we add one to the length if zero but not if it is non-zero. When the axis
+        # is 2 or longer, it returns the correct length.
         if region.axis_major_length == 0:
             w = region.axis_major_length + 1
         else:
@@ -1374,44 +1353,30 @@ def _sk_filter_areas(image, threshold, dq=0, integration=0, grp=0):
             h = region.axis_minor_length + 1
         else:
             h = region.axis_minor_length
-#        print("after threshold test", w, h, region.area_filled, region.centroid[1], region.centroid[0])
         min_areas.append(
             ((float(region.centroid[1]), float(region.centroid[0])), (h, w), np.degrees(region.orientation))
         )
     return min_areas
 def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, saturation_mask_window=120):
     today_search = file_dir + str(round(float(start_time))) + "*" + detector_name + "*"
-    print("flag previous saturation", today_search)
-#    print("file_dir", file_dir)
-#    print("start time of exp", start_time)
     today_files = glob(today_search + "*")
     yesterday_search = file_dir + str(round(float(start_time) - 1)) + "*" + detector_name + "*"
     yesterday_files = glob(yesterday_search + "*")
     all_files = (yesterday_files + today_files)
- #   print("all_files", all_files)
     delta_times = []
     good_files = []
     for full_file in all_files:
         file = full_file.removeprefix(file_dir)
         file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
         delta_time_min = (float(start_time) - file_time) * 1440.
-#        print('start time', start_time, 'delta time', delta_time_min)
         if delta_time_min > 0 and (delta_time_min < saturation_mask_window):
             delta_times.append(delta_time_min)
             good_files.append(file)
-#    print("good files", good_files)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
-#        print('index_of_closest_file', index_of_closest_file)
         saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
-#        print("saturation file name ", good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
-        # only mask the first integration
- #       fits.writeto("jump_mask.fits", saturation_mask, overwrite=True)
         new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
-        fits.writeto("in_gdq.fits", in_gdq, overwrite=True)
-        fits.writeto("saturation_mask.fits", saturation_mask, overwrite=True)
-        fits.writeto('new_gdq.fits', new_gdq, overwrite=True)
         return new_gdq
     else:
         return in_gdq
@@ -1420,7 +1385,6 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
 def flag_sat_in_exposure(in_gdq, sat_flag):
     #  Find the saturated pixels at the end of each integration and or them to all groups in the next integration
     #  Optimal implementation should have more flexibility
-    print("flag sat in exposure", sat_flag)
     nints, ngrps, nrows, ncols = in_gdq.shape
     out_gdq = in_gdq.copy()
     start_sat = np.zeros(shape=(nints, nrows, ncols), dtype=np.uint32)
@@ -1428,10 +1392,5 @@ def flag_sat_in_exposure(in_gdq, sat_flag):
     for intg in range(nints):
         last_grp_sat[intg, :, :] = np.bitwise_and(in_gdq[intg, -1, :, :], sat_flag)
         if intg > 0:
-            #start_sat[intg, :, :] = np.bitwise_or(out_gdq[intg, 0, :, :], last_grp_sat[intg - 1, :, :])
             out_gdq[intg:, :, :, :] = np.bitwise_or(in_gdq[intg:, :, :, :], last_grp_sat[intg - 1, np.newaxis, :, :])
-
-#    fits.writeto("working_sat_last_plane.fits", last_grp_sat.astype(int), overwrite=True)
-#    fits.writeto("last_grp_sat.fits", last_grp_sat, overwrite=True)
-#    fits.writeto("exposure_out_gdq.fits", out_gdq.astype(int), overwrite=True)
     return last_grp_sat[-1, :, :], out_gdq
