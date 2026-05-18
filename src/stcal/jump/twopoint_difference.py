@@ -3,9 +3,10 @@ import warnings
 
 import numpy as np
 from astropy import stats
+from astropy.stats import mad_std
 from astropy.utils.exceptions import AstropyUserWarning
 log = logging.getLogger(__name__)
-
+from astropy.io import fits
 
 def find_crs(data, group_dq, read_noise, twopt_p):
     """
@@ -437,12 +438,16 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
         axis = 0 if twopt_p.only_use_ints else (0, 1)
         clipped_diffs, allow, ahigh = stats.sigma_clip(
             first_diffs, sigma=twopt_p.normal_rej_thresh, axis=axis, masked=True, return_bounds=True
+            , cenfunc='median', stdfunc=mad_std
         )
 
         # get the standard deviation from the bounds of sigma clipping
         jump_candidates = clipped_diffs.mask
+        fits.writeto("first_diffs.fits", first_diffs, overwrite=True)
+        fits.writeto("jump_candidates.fits", jump_candidates.astype(int), overwrite=True)
         sat_or_dnu_not_set = gdq[:, 1:] & (twopt_p.fl_sat | twopt_p.fl_dnu) == 0
         jump_mask = jump_candidates & first_diffs_finite & sat_or_dnu_not_set
+        fits.writeto("jump_mask.fits", jump_mask.astype(int), overwrite=True)
         del clipped_diffs
         gdq[:, 1:] |= jump_mask * np.uint8(twopt_p.fl_jump)
 
@@ -484,7 +489,6 @@ def check_sigma_clip_groups(nints, total_groups, twopt_p):
 
     test1 = twopt_p.only_use_ints and nints >= twopt_p.minimum_sigclip_groups
     test2 = not twopt_p.only_use_ints and total_groups >= twopt_p.minimum_sigclip_groups
-    print("test1", int(test1), "test2", int(test2))
     return test1 or test2
 
 
