@@ -115,10 +115,11 @@ def jump_detection_post_processing(
     # Flag neighbors above the threshold for which neither saturation
     # nor donotuse is set.
     if twopt_p.flag_4_neighbors:
+        fits.writeto("before_flag_four.fits", gdq, overwrite=True)
         gdq, row_below_gdq, row_above_gdq = flag_four_neighbors(
             gdq, nints, ngroups, first_diffs, median_diffs, sigma, row_below_gdq, row_above_gdq, twopt_p
         )
-
+        fits.writeto("after_flag_four_withbug.fits", gdq, overwrite=True)
     # Flag n groups after jumps above the specified thresholds to
     # account for the transient seen after ramp jumps.  Again, use
     # boolean arrays; the propagation happens in a separate function.
@@ -540,11 +541,12 @@ def flag_four_neighbors(
             ratio = np.abs(first_diffs[i, j] - median_diffs) / sig
             # For all pixels set flag to True if the ratio is within the range of flagging neighbors
             # and the pixel has a gdq of Jump set.
+            jump_set = gdq[i, j + 1] & twopt_p.fl_jump != 0
             flag = (
                 (ratio < twopt_p.max_jump_to_flag_neighbors)
                 & (ratio > twopt_p.min_jump_to_flag_neighbors)
             # including jump_set prevents some pixels from being masked correctly
-#                & (jump_set)
+                & (jump_set)
             )
             # Dilate the flag by one pixel in each direction.
             flagsave = flag.copy()
