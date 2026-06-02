@@ -410,7 +410,9 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
     fits.writeto("gdq_after_mask_persist.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
-        out_flagged_jumps = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        out_flagged_jumps1 = (np.bitwise_and(gdq[-1, -2, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        out_flagged_jumps2 = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
+        out_flagged_jumps = np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
         fits.writeto("out_flagged_jump.fits", out_flagged_jumps, overwrite=True)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
@@ -1377,7 +1379,8 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
         saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
-        new_gdq[0, :, :, :] = np.bitwise_or(in_gdq[0, :, :, :], saturation_mask[np.newaxis, :, :])
+        # apply the saturation mask to the first two integrations
+        new_gdq[0:2, :, :, :] = np.bitwise_or(in_gdq[0:2, :, :, :], saturation_mask[np.newaxis, :, :])
         return new_gdq
     else:
         return in_gdq
