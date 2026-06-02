@@ -115,11 +115,11 @@ def jump_detection_post_processing(
     # Flag neighbors above the threshold for which neither saturation
     # nor donotuse is set.
     if twopt_p.flag_4_neighbors:
-        fits.writeto("before_flag_four.fits", gdq, overwrite=True)
+#        fits.writeto("before_flag_four.fits", gdq, overwrite=True)
         gdq, row_below_gdq, row_above_gdq = flag_four_neighbors(
             gdq, nints, ngroups, first_diffs, median_diffs, sigma, row_below_gdq, row_above_gdq, twopt_p
         )
-        fits.writeto("after_flag_four_withbug.fits", gdq, overwrite=True)
+#        fits.writeto("after_flag_four_withbug.fits", gdq, overwrite=True)
     # Flag n groups after jumps above the specified thresholds to
     # account for the transient seen after ramp jumps.  Again, use
     # boolean arrays; the propagation happens in a separate function.
@@ -444,11 +444,11 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
 
         # get the standard deviation from the bounds of sigma clipping
         jump_candidates = clipped_diffs.mask
-        fits.writeto("first_diffs.fits", first_diffs, overwrite=True)
-        fits.writeto("jump_candidates.fits", jump_candidates.astype(int), overwrite=True)
+#        fits.writeto("first_diffs.fits", first_diffs, overwrite=True)
+#        fits.writeto("jump_candidates.fits", jump_candidates.astype(int), overwrite=True)
         sat_or_dnu_not_set = gdq[:, 1:] & (twopt_p.fl_sat | twopt_p.fl_dnu) == 0
         jump_mask = jump_candidates & first_diffs_finite & sat_or_dnu_not_set
-        fits.writeto("jump_mask.fits", jump_mask.astype(int), overwrite=True)
+#        fits.writeto("jump_mask.fits", jump_mask.astype(int), overwrite=True)
         del clipped_diffs
         gdq[:, 1:] |= jump_mask * np.uint8(twopt_p.fl_jump)
 
