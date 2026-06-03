@@ -407,13 +407,12 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
-    fits.writeto("gdq_after_mask_persist.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
-        out_flagged_jumps1 = (np.bitwise_and(gdq[-1, -2, :, :], sat_flag) // sat_flag).astype(np.uint32)
-        out_flagged_jumps2 = (np.bitwise_and(gdq[-1, -1, :, :], sat_flag) // sat_flag).astype(np.uint32)
-        out_flagged_jumps = np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
-        fits.writeto("out_flagged_jump.fits", out_flagged_jumps, overwrite=True)
+        #Here we take the last two integrations from the jump_data to make the persistence mask for the next exp.
+        out_flagged_jumps1 = (np.bitwise_and(persist_jumps[-2, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+        out_flagged_jumps2 = (np.bitwise_and(persist_jumps[-1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+        out_flagged_jumps= np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
 
