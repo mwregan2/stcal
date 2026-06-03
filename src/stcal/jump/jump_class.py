@@ -219,7 +219,7 @@ class JumpData:
 
         # How many groups to be flagged when the saturated cores are extended into
         # subsequent integrations.
-        self.persist_grps_flagged = 25
+        self.persist_grps_flagged = 100
 
         # Multiprocessing, data a sliced by row
         self.max_cores = None  # Number of processes
