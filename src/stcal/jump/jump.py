@@ -407,6 +407,8 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
+    fits.writeto("persist_jumps_cube.fits", persist_jumps, overwrite=True)
+    fits.writeto("outgdq_persist_jumps_cube.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
         #Here we take the last two integrations from the jump_data to make the persistence mask for the next exp.
@@ -1379,7 +1381,7 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
         saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
         # apply the saturation mask to the first two integrations
-        new_gdq[0:2, :, :, :] = np.bitwise_or(in_gdq[0:2, :, :, :], saturation_mask[np.newaxis, :, :])
+        new_gdq[0:2, :, :, :] = np.bitwise_or(in_gdq[0:2, :, :, :], saturation_mask[np.newaxis, np.newaxis, :, :])
         return new_gdq
     else:
         return in_gdq
