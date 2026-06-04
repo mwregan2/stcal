@@ -395,7 +395,7 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                 expansion=jump_data.expand_factor,
                 num_grps_masked=0,
             )
-
+    fits.writeto('ingdq_persist_jumps.fits', gdq, overwrite=True)
     #  Test to see if the flagging of the saturated cores will be
     #  extended into the subsequent integrations. Persist_jumps contains
     #  all the pixels that were saturated in the cores of snowballs.
@@ -403,10 +403,12 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
         for intg in range(1, nints):
             if jump_data.persist_grps_flagged >= 1:
                 last_grp_flagged = min(jump_data.persist_grps_flagged, ngrps)
+                print("last_grp_flagged: {}".format(last_grp_flagged))
                 gdq[intg, 1:last_grp_flagged, :, :] = np.bitwise_or(
                     gdq[intg, 1:last_grp_flagged, :, :],
                     np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
                 )
+    print(" Persist grps flagged", jump_data.persist_grps_flagged)
     fits.writeto("persist_jumps_cube.fits", persist_jumps, overwrite=True)
     fits.writeto("outgdq_persist_jumps_cube.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
