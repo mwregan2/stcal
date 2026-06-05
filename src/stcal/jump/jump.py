@@ -395,24 +395,35 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
                 expansion=jump_data.expand_factor,
                 num_grps_masked=0,
             )
-
+    fits.writeto('ingdq_persist_jumps.fits', gdq, overwrite=True)
     #  Test to see if the flagging of the saturated cores will be
     #  extended into the subsequent integrations. Persist_jumps contains
     #  all the pixels that were saturated in the cores of snowballs.
-    if jump_data.mask_persist_grps_next_int:
-        for intg in range(1, nints):
-            if jump_data.persist_grps_flagged >= 1:
-                last_grp_flagged = min(jump_data.persist_grps_flagged, ngrps)
-                gdq[intg, 1:last_grp_flagged, :, :] = np.bitwise_or(
-                    gdq[intg, 1:last_grp_flagged, :, :],
-                    np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
-                )
+#    if jump_data.mask_persist_grps_next_int:
+#        for intg in range(1, nints):
+#            print("test of integration {}".format(intg))
+#            if jump_data.persist_grps_flagged >= 1:
+#                last_grp_flagged = min(jump_data.persist_grps_flagged, ngrps)
+#                print("last_grp_flagged: {}".format(last_grp_flagged))
+#                gdq[intg, 1:last_grp_flagged, :, :] = np.bitwise_or(
+#                    gdq[intg, 1:last_grp_flagged, :, :],
+#                    np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
+#                )
+    first_int_persist = (np.bitwise_and(persist_jumps[0, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+    second_int_persist = (np.bitwise_and(persist_jumps[1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+
+    persistence_mask_int3 = np.bitwise_or(first_int_persist, second_int_persist)
+    gdq[1, :, :, :] = np.bitwise_or(gdq[1, :, :, :], first_int_persist[np.newaxis, :, :])
+    gdq[2, :, :, :] = np.bitwise_or(gdq[2, :, :, :], persistence_mask_int3[np.newaxis, :, :])
+
+    fits.writeto("persist_jumps_cube.fits", persist_jumps, overwrite=True)
+    fits.writeto("outgdq_persist_jumps_cube.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
         #Here we take the last two integrations from the jump_data to make the persistence mask for the next exp.
         out_flagged_jumps1 = (np.bitwise_and(persist_jumps[-2, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
         out_flagged_jumps2 = (np.bitwise_and(persist_jumps[-1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
-        out_flagged_jumps= np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
+        out_flagged_jumps = np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
 
@@ -1379,7 +1390,7 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
         saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
         new_gdq = in_gdq.copy()
         # apply the saturation mask to the first two integrations
-        new_gdq[0:2, :, :, :] = np.bitwise_or(in_gdq[0:2, :, :, :], saturation_mask[np.newaxis, :, :])
+        new_gdq[0:2, :, :, :] = np.bitwise_or(in_gdq[0:2, :, :, :], saturation_mask[np.newaxis, np.newaxis, :, :])
         return new_gdq
     else:
         return in_gdq
