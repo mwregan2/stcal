@@ -1263,7 +1263,7 @@ compute_integration_segments(
     uint32_t *groupdq = NULL;
     npy_intp idx, start, end;
     int in_seg = 0;
-
+//    printf(" inside no rnoise branch\n");
     if (chargeloss) {
         groupdq = pr->orig_gdq + integ * pr->ngroups;
     } else {
