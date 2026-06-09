@@ -2727,12 +2727,12 @@ py_ramp_data_get_int(
         dbg_ols_print("Rate var_r: %f\n\n", pr->rate.var_rnoise);                          \
     } while (0)
 
-#define DBG_MEDIAN_RATE                                                                    \
-    do {                                                                                   \
-        print_delim();                                                                     \
-        dbg_ols_print("Pixel (%ld, %ld)\n", pr->row, pr->col);                             \
-        dbg_ols_print("Median Rate = %.10f\n", pr->median_rate);                           \
-        print_delim();                                                                     \
+#define DBG_MEDIAN_RATE                                          \
+    do {                                                         \
+        print_delim();                                           \
+        dbg_ols_print("Pixel (%ld, %ld)\n", pr->row, pr->col);   \
+        dbg_ols_print("Median Rate = %.10f\n", pr->median_rate); \
+        print_delim();                                           \
     } while (0)
 
 /*
@@ -2825,7 +2825,8 @@ ramp_fit_pixel(
     }
 
     if (!isnan(pr->rate.slope)) {
-        pr->rate.slope = pr->rate.slope * pr->rate.var_rnoise;; // JP-4318
+        pr->rate.slope = pr->rate.slope * pr->rate.var_rnoise;
+        ; // JP-4318
     }
 
     // DBG_RATE_INFO;  /* XXX */
@@ -3187,8 +3188,8 @@ ramp_fit_pixel_integration_fit_slope_seg_len1(
     seg->var_e = seg->var_p + seg->var_r;
 
     if (rd->save_opt) {
-        tmp = 1. / seg->var_e;
-        seg->weight = tmp * tmp;
+        tmp = 1. / seg->var_r;
+        seg->weight = tmp;
     }
 
     return 0;
@@ -3280,9 +3281,8 @@ ramp_fit_pixel_integration_fit_slope_seg_len2(
         seg->sigyint = seg->sigslope;
 
         /* WEIGHTS */
-        tmp = (seg->var_p + seg->var_r);
+        tmp = seg->var_r;
         wt = 1. / tmp;
-        wt *= wt;
         seg->weight = wt;
     }
 
@@ -3438,8 +3438,7 @@ ramp_fit_pixel_integration_fit_slope_seg_default_weighted_seg(
     seg->var_e = seg->var_p + seg->var_r;
 
     if (rd->save_opt) {
-        seg->weight = 1. / seg->var_e;
-        seg->weight *= seg->weight;
+        seg->weight = 1. / seg->var_r;
     }
 }
 
