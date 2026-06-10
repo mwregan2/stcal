@@ -437,9 +437,10 @@ def det_jump_sigma_clipping(gdq, nints, ngroups, total_groups, first_diffs_finit
         warnings.filterwarnings("ignore", ".*Input data contains invalid values*", AstropyUserWarning)
 
         axis = 0 if twopt_p.only_use_ints else (0, 1)
+        custom_stdfunc = lambda d, axis=None: mad_std(d, axis=axis, ignore_nan=True)
         clipped_diffs, allow, ahigh = stats.sigma_clip(
             first_diffs, sigma=twopt_p.normal_rej_thresh, axis=axis, masked=True, return_bounds=True
-            , cenfunc='median', stdfunc=mad_std
+            , cenfunc='median', stdfunc=custom_stdfunc,
         )
 
         # get the standard deviation from the bounds of sigma clipping
