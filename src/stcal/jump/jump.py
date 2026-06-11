@@ -420,9 +420,12 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
         #Here we take the last two integrations from the jump_data to make the persistence mask for the next exp.
-        out_flagged_jumps1 = (np.bitwise_and(persist_jumps[-2, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
-        out_flagged_jumps2 = (np.bitwise_and(persist_jumps[-1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
-        out_flagged_jumps = np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
+        if nints > 1:
+           out_flagged_jumps1 = (np.bitwise_and(persist_jumps[-2, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+           out_flagged_jumps2 = (np.bitwise_and(persist_jumps[-1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+           out_flagged_jumps = np.bitwise_or(out_flagged_jumps1, out_flagged_jumps2)
+        else:
+            out_flagged_jumps = np.bitwise_and(persist_jumps, jump_data.fl_jump)
         fits.writeto(jump_data.file_dir + str(jump_data.exp_stop_time) + "_" + jump_data.detector_name +
                      "_saturated_cores.fits", out_flagged_jumps, overwrite=True)
 
