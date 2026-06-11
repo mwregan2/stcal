@@ -409,15 +409,14 @@ def flag_large_events(base_gdq, jump_flag, sat_flag, jump_data):
 #                    gdq[intg, 1:last_grp_flagged, :, :],
 #                    np.repeat(persist_jumps[intg - 1, np.newaxis, :, :], last_grp_flagged - 1, axis=0),
 #                )
-    first_int_persist = (np.bitwise_and(persist_jumps[0, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
-    second_int_persist = (np.bitwise_and(persist_jumps[1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+    if nints > 1:
+        first_int_persist = (np.bitwise_and(persist_jumps[0, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
+        second_int_persist = (np.bitwise_and(persist_jumps[1, :, :], jump_data.fl_jump) // jump_data.fl_jump).astype(np.uint32)
 
-    persistence_mask_int3 = np.bitwise_or(first_int_persist, second_int_persist)
-    gdq[1, :, :, :] = np.bitwise_or(gdq[1, :, :, :], first_int_persist[np.newaxis, :, :])
-    gdq[2, :, :, :] = np.bitwise_or(gdq[2, :, :, :], persistence_mask_int3[np.newaxis, :, :])
+        persistence_mask_int3 = np.bitwise_or(first_int_persist, second_int_persist)
+        gdq[1, :, :, :] = np.bitwise_or(gdq[1, :, :, :], first_int_persist[np.newaxis, :, :])
+        gdq[2, :, :, :] = np.bitwise_or(gdq[2, :, :, :], persistence_mask_int3[np.newaxis, :, :])
 
-    fits.writeto("persist_jumps_cube.fits", persist_jumps, overwrite=True)
-    fits.writeto("outgdq_persist_jumps_cube.fits", gdq, overwrite=True)
     if jump_data.write_saturated_cores:
         log.info("Writing current snowball cores")
         #Here we take the last two integrations from the jump_data to make the persistence mask for the next exp.
