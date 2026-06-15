@@ -16,7 +16,7 @@ import numpy as np
 import skimage
 from astropy.convolution import Ring2DKernel
 from scipy import signal
-
+import os
 from stcal.multiprocessing import compute_num_cores
 
 from . import twopoint_difference as twopt
@@ -1381,12 +1381,15 @@ def flag_previous_saturation(in_gdq, start_time, detector_name, file_dir, satura
     delta_times = []
     good_files = []
     for full_file in all_files:
-        file = full_file.removeprefix(file_dir)
-        file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
+        filename_only = os.path.basename(full_file)
+        number_str = filename_only.removesuffix('_' + detector_name + '_saturated_cores.fits')
+        file_time = float(number_str)
+#        file = full_file.removeprefix(file_dir)
+#        file_time = float(file.removesuffix('_' + detector_name + '_saturated_cores.fits'))
         delta_time_min = (float(start_time) - file_time) * 1440.
         if delta_time_min > 0 and (delta_time_min < saturation_mask_window):
             delta_times.append(delta_time_min)
-            good_files.append(file)
+            good_files.append(filename_only)
     if len(good_files) > 0:
         index_of_closest_file = np.argmin(delta_times)  # only use the closest exposure
         saturation_mask = fits.getdata(file_dir + good_files[index_of_closest_file])
